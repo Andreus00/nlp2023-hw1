@@ -24,8 +24,9 @@ window_size = 5
 TESTING = True
 
 GENERATE_VOCAB = False
-RESUME_WORD2VEC = True if TESTING else False
-TRAIN_WORD2VEC = False if TESTING else True
+PLOT_EMBEDDINGS = True
+RESUME_WORD2VEC = True
+TRAIN_WORD2VEC = False
 
 
 def build_model(device: str) -> Model:
@@ -90,9 +91,7 @@ class Word2Vec(torch.nn.Module):
         '''
         super(Word2Vec, self).__init__()
         self.embeding = torch.nn.Embedding(vocab_size, embedding_size)
-        self.lin_layer = torch.nn.Linear(embedding_size, 128)
-        self.relu = torch.nn.ReLU()
-        self.lin_layer2 = torch.nn.Linear(128, vocab_size)
+        self.lin_layer = torch.nn.Linear(embedding_size, vocab_size)
         self.softmax = torch.nn.LogSoftmax(dim=1)
 
     def forward(self, input):
@@ -103,12 +102,10 @@ class Word2Vec(torch.nn.Module):
         '''
         hidden = self.embeding(input)
         logits = self.lin_layer(hidden)
-        logits = self.relu(logits)
-        logits = self.lin_layer2(logits)
         out = self.softmax(logits)
         return out
 
-def train_word2vec(dataset, vocab, embedding_size=300, batch_size=32, num_epochs=30, learning_rate=1e-4, lr_decay=0.999):
+def train_word2vec(dataset, vocab, embedding_size=300, batch_size=32, num_epochs=30, learning_rate=1e-4, lr_decay=0.9):
     '''
     Train the Word2Vec model
 
@@ -131,7 +128,9 @@ def train_word2vec(dataset, vocab, embedding_size=300, batch_size=32, num_epochs
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
     best_loss = float('inf')
-
+    X, y = dataset.generate_data(batch_size)
+    
+    
     for epoch in range(num_epochs):
         print(f'Epoch {epoch + 1}/{num_epochs}')
         print('-' * 10)
@@ -139,7 +138,9 @@ def train_word2vec(dataset, vocab, embedding_size=300, batch_size=32, num_epochs
         epoch_loss = 0
 
         i = 1
-        for X_, y_ in dataset.iterate_w2v(batch_size):
+        bar = tqdm(zip(X, y), total=len(X))
+        
+        for X_, y_ in bar:  #dataset.iterate_cbow(batch_size):
             X_ = X_.to(device)
             y_ = y_.to(device)
             optimizer.zero_grad()
@@ -314,67 +315,124 @@ class Dataset(torch.utils.data.Dataset):
                     if idx == batch_size - 1:
                         yield X, y
                         idx = 0
+    
+    def iterate_cbow(self, batch_size):
+        X = torch.zeros(batch_size, dtype=torch.int32)
+        y = torch.zeros(batch_size, len(self.vocab))
+        idx = 0
+        for i in tqdm(range(0, len(self.sentences))):
+            sentence = [w.lower() for w in self.sentences[i] if w.lower() in self.vocab.keys()]
+            for i in range(len(sentence)):
+                word = sentence[i]
+                start = max(0, i - window_size)
+                end = min(len(sentence) - 1, i + window_size)
+                tot = end - start
+                for j in range(start, end):
+                    if j != i:
+                        X[idx] = self.vocab[sentence[j]]
+                        y[idx, :] = one_hot(self.vocab[word], len(self.vocab))
+                        idx += 1
+                    if idx == batch_size - 1:
+                        yield X, y
+                        idx = 0
 
-def generate_data(sentences, batch_size, vocab):
-    # for each word in each sentence, generate a list of surrounding words
+    def generate_data(self, batch_size):
+        # for each word in each sentence, generate a list of surrounding words
 
-    X = []
-    y = []
-    for sentence in tqdm(sentences):
-        sentence = [w.lower() for w in sentence if w.lower() in vocab.keys()]
-        for i in range(len(sentence)):
-            word = sentence[i]
-            start = max(0, i - window_size)
-            end = min(len(sentence) - 1, i + window_size)
-            tot = end - start
-            for j in range(start, end):
-                if j != i:
-                    X.append(vocab[word])
-                    y.append(vocab[sentence[j]])
-                if (random.random() < 0.4):
-                    # add negative samples
-                    X.append(vocab[word])
-                    y.append(0)
+        X = []
+        y = []
+        for sentence in tqdm(self.sentences):
+            sentence = [w.lower() for w in sentence if w.lower() in self.vocab.keys()]
+            for i in range(len(sentence)):
+                word = sentence[i]
+                start = max(0, i - window_size)
+                end = min(len(sentence) - 1, i + window_size)
+                tot = end - start
+                for j in range(start, end):
+                    if j != i:
+                        X.append(self.vocab[sentence[j]])
+                        y.append(self.vocab[word])
 
-            
-            # print(word, [sentence[j] for j in range(max(0, i - window_size), min(len(sentence) - 1, i + window_size)) if j != i])
-    print(len(X))
-    print(len(y))
-            
+                
+                # print(word, [sentence[j] for j in range(max(0, i - window_size), min(len(sentence) - 1, i + window_size)) if j != i])
+        print(len(X))
+        print(len(y))
+                
 
-    X = np.array(X)
-    y = np.array(y)
+        X = np.array(X)
+        y = np.array(y)
 
-    X = X[: -(X.shape[0] % batch_size)]
-    y = y[: -(y.shape[0] % batch_size)]
-    return torch.tensor(X[..., np.newaxis].reshape(-1, batch_size)), torch.tensor(y[..., np.newaxis].reshape(-1, batch_size))
+        X = X[: -(X.shape[0] % batch_size)]
+        y = y[: -(y.shape[0] % batch_size)]
+        return torch.tensor(X[..., np.newaxis].reshape(-1, batch_size)), torch.tensor(y[..., np.newaxis].reshape(-1, batch_size))
+
+
+def cosine_similarity(word2vec, word):
+    '''
+    Computes the cosine similarity between two vectors
+    '''
+    cos = torch.nn.CosineSimilarity(dim=1, eps=1e-6)
+    w = torch.einsum('ab, b -> ab', torch.ones_like(word2vec), word)
+    return cos(word2vec, w)
+     
 
 
 def get_k_closest(word, vocab, word2vec, k=10):
     word_embedding = word2vec[vocab[word]]
-    print(word_embedding.shape)
-    print(word2vec.shape)
-    res = word2vec @ word_embedding[None, ...].T
-    res = res.flatten()
-    print(res.shape)
-
-    best = list(torch.argsort(res, descending=True)[:k].numpy().flatten())
-    worst = list(torch.argsort(res, descending=False)[:k].numpy().flatten())
+    similarities = cosine_similarity(word2vec, word2vec[vocab[word]])
+    best = list(torch.argsort(similarities)[-k:].numpy().flatten())
+    worst = list(torch.argsort(similarities)[:k].numpy().flatten())
     best_words = [v for v in vocab.items() if v[1] in best]
     worst_words = [v for v in vocab.items() if v[1] in worst]
-    words_and_scores = [(w, res[i]) for w, i in best_words]
-    worse_words_and_scores = [(w, res[i]) for w, i in worst_words]
+    words_and_scores = [(w, similarities[i]) for w, i in best_words]
+    worse_words_and_scores = [(w, similarities[i]) for w, i in worst_words]
     words_and_scores.sort(key=lambda x: x[1], reverse=True)
     worse_words_and_scores.sort(key=lambda x: x[1], reverse=False)
     return words_and_scores, worse_words_and_scores
 
 
 
+def plot_embeddings(vocab, word2vec):
+    from sklearn.decomposition import PCA
+    pca = PCA(n_components=2)
+    x_new = pca.fit_transform(word2vec)
+    plt.scatter(x_new[:,0], x_new[:,1])
+    plt.xlabel('PC1')
+    plt.ylabel('PC2')
+    plt.show()
+    
+
+
+def plot_embeddings_close_to_word(vocab, word2vec, word, k=10):
+    from sklearn.decomposition import PCA
+    inv_vocab = {v: k for k, v in vocab.items()}
+    pca = PCA(n_components=2)
+    
+    similarities = cosine_similarity(word2vec,  word)
+    
+    print(similarities.shape)
+    best_idxs = list(torch.argsort(similarities, dim=0)[-k:].numpy().flatten())
+    print(best_idxs)
+    best = word2vec[best_idxs]
+    x_new = pca.fit_transform(best)
+    labels_of_x_new = [inv_vocab[i] for i in best_idxs]
+
+    fig, ax = plt.subplots()
+    ax.scatter(x_new[:,0], x_new[:,1])
+
+    for i, txt in enumerate(labels_of_x_new):
+        ax.annotate(txt, (x_new[i][0], x_new[i][1]))
+    ax.set_xlabel('PC1')
+    ax.set_ylabel('PC2')
+    
+    plt.show()
+    
+
+
+
 def main():
     vocab, sentences, labels = generate_vocab_sentences_labels('./data/train.jsonl', save=GENERATE_VOCAB)
     print("Vocab Len:", len(vocab))
-
-    # X, y = generate_data(sentences, batch_size, vocab)
 
     dataset = Dataset(sentences, labels, vocab)
 
@@ -386,17 +444,17 @@ def main():
         model = Word2Vec(len(vocab), embedding_size)
         model.load_state_dict(torch.load('./model/word2vec.pth'))
         model.eval()
+        
+    W2V_WEIGHTS = model.lin_layer.weight
+        
+    TEST_WORD = "party"
 
-    best, worst = get_k_closest("love", vocab, model.embeding.weight, k=10)
+    best, worst = get_k_closest(TEST_WORD, vocab, W2V_WEIGHTS, k=10)
     print(best)
     print(worst)
-
-
-    cos = torch.nn.CosineSimilarity(dim=0).to("cuda")
-    theta = cos(model.embeding.weight[vocab["king"]], model.embeding.weight[vocab["queen"]])
-    print(theta)
-
-
+    
+    if PLOT_EMBEDDINGS:
+        plot_embeddings_close_to_word(vocab, W2V_WEIGHTS.detach(), W2V_WEIGHTS[vocab[TEST_WORD]], k=30)
 
 
 if __name__ == "__main__":
