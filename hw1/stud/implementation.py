@@ -410,9 +410,23 @@ def plot_embeddings_close_to_word(vocab, word2vec, word, k=10):
     
     similarities = cosine_similarity(word2vec,  word)
     
-    print(similarities.shape)
-    best_idxs = list(torch.argsort(similarities, dim=0)[-k:].numpy().flatten())
-    print(best_idxs)
+    # print best and worst scores
+    
+    best_idxs = list(torch.argsort(similarities)[-k:].numpy().flatten())
+    worst_idxs = list(torch.argsort(similarities)[:k].numpy().flatten())
+    best_words = [v for v in vocab.items() if v[1] in best_idxs]
+    worst_words = [v for v in vocab.items() if v[1] in worst_idxs]
+    best_words_and_scores = [(w, similarities[i]) for w, i in best_words]
+    worse_words_and_scores = [(w, similarities[i]) for w, i in worst_words]
+    best_words_and_scores.sort(key=lambda x: x[1], reverse=True)
+    worse_words_and_scores.sort(key=lambda x: x[1], reverse=False)
+    print("Best Scores:", best_words_and_scores)
+    print()
+    print("Worst Scores:", worse_words_and_scores)
+    
+    
+    # plot best words
+    
     best = word2vec[best_idxs]
     x_new = pca.fit_transform(best)
     labels_of_x_new = [inv_vocab[i] for i in best_idxs]
@@ -447,11 +461,7 @@ def main():
         
     W2V_WEIGHTS = model.lin_layer.weight
         
-    TEST_WORD = "party"
-
-    best, worst = get_k_closest(TEST_WORD, vocab, W2V_WEIGHTS, k=10)
-    print(best)
-    print(worst)
+    TEST_WORD = "august"
     
     if PLOT_EMBEDDINGS:
         plot_embeddings_close_to_word(vocab, W2V_WEIGHTS.detach(), W2V_WEIGHTS[vocab[TEST_WORD]], k=30)
