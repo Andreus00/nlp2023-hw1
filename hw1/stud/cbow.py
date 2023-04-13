@@ -9,6 +9,7 @@ from tqdm import tqdm
 import json
 import matplotlib.pyplot as plt
 import random
+from loss import NEGLoss
 
 import config
 
@@ -16,7 +17,7 @@ class CBOW(torch.nn.Module):
     '''
     CBOW model
     '''
-    def __init__(self, vocab_size, embedding_size):
+    def __init__(self, vocab_size, embedding_dim, id2word, word_counts, NEG_SAMPLING=False):
         '''
         Init the CBOW model
 
@@ -24,9 +25,13 @@ class CBOW(torch.nn.Module):
         @param embedding_size: size of the embedding
         '''
         super(CBOW, self).__init__()
-        self.embeding = torch.nn.Embedding(vocab_size, embedding_size)
-        self.lin_layer = torch.nn.Linear(embedding_size, vocab_size)
-        self.softmax = torch.nn.LogSoftmax(dim=1)
+        self.lin_layer = torch.nn.Linear(vocab_size, embedding_dim)
+        self.embedding = torch.nn.Linear(embedding_dim, vocab_size)
+        
+        if NEG_SAMPLING:
+            self.loss_function = NEGLoss(id2word, word_counts)
+        else:
+            self.loss_function = torch.nn.CrossEntropyLoss()
 
     def forward(self, input):
         '''
@@ -34,10 +39,14 @@ class CBOW(torch.nn.Module):
 
         @param input: input tensor of shape (batch_size, seq_len)
         '''
-        hidden = self.embeding(input)
-        logits = self.lin_layer(hidden)
-        out = self.softmax(logits)
-        return out
+        hidden = self.lin_layer(input)
+        output_embeddings = self.embedding(hidden)
+        if isinstance(self.loss_function, NEGLoss):
+            output = torch.nn.functional.log_softmax(output_embeddings, dim=-1)
+        else:
+            # CrossEntropyLoss applies log_softmax internally
+            output = output_embeddings
+        return output
 
 def train_cbow(dataset, vocab, embedding_size=300, batch_size=32, num_epochs=30, learning_rate=1e-4, lr_decay=0.9):
     '''

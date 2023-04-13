@@ -82,7 +82,7 @@ print('Using Negative Sampling: ', config.NEGATIVE_SAMPLING)
 dataset = Word2VecDataset(config.train_file, config.vocab_size, config.UNK_TOKEN, window_size=5)
 
 
-model = SkipGram(config.vocab_size, embedding_dim=300, id2word=dataset.id2word,
+model = CBOW(config.vocab_size, embedding_dim=300, id2word=dataset.id2word,
                  word_counts=dataset.frequency, NEG_SAMPLING=config.NEGATIVE_SAMPLING)
 
 # define an optimizer (stochastic gradient descent) to update the parameters
