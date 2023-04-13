@@ -53,9 +53,9 @@ class Word2VecDataset(torch.utils.data.IterableDataset):
                             target = self.word2id[sentence[target_idx]]
                             # index of input word
                             current_word_id = self.word2id[current_word]
-                            if config.ALGORITHM == config.ALGORITHM_SKIPGRAM:
+                            if config.ALGORITHM == config.USE_SKIPGRAM:
                                 output_dict = {'targets':target, 'inputs':current_word_id}
-                            elif config.ALGORITHM == config.ALGORITHM_CBOW:
+                            elif config.ALGORITHM == config.USE_CBOW:
                                 output_dict = {'targets':current_word_id, 'inputs':target}
                             else:
                                 raise ValueError("Invalid algorithm: {}".format(config.ALGORITHM))
@@ -88,7 +88,7 @@ class Word2VecDataset(torch.utils.data.IterableDataset):
 
         for json_str in tqdm(json_list):
             result = json.loads(json_str)
-            sentences.append([token.lower() for token in result['tokens'] if filt(token)])
+            sentences.append([token.lower() for token in result['tokens'] if filt(token.lower())])
             
                    
 
