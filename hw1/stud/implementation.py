@@ -25,8 +25,8 @@ TESTING = True
 
 GENERATE_VOCAB = False
 PLOT_EMBEDDINGS = True
-RESUME_WORD2VEC = True
-TRAIN_WORD2VEC = False
+RESUME_CBOW = True
+TRAIN_CBOW = False
 
 
 def build_model(device: str) -> Model:
@@ -78,18 +78,18 @@ class StudentModel(Model):
         pass
 
 
-class Word2Vec(torch.nn.Module):
+class CBOW(torch.nn.Module):
     '''
-    Word2Vec model
+    CBOW model
     '''
     def __init__(self, vocab_size, embedding_size):
         '''
-        Init the Word2Vec model
+        Init the CBOW model
 
         @param vocab_size: size of the vocabulary
         @param embedding_size: size of the embedding
         '''
-        super(Word2Vec, self).__init__()
+        super(CBOW, self).__init__()
         self.embeding = torch.nn.Embedding(vocab_size, embedding_size)
         self.lin_layer = torch.nn.Linear(embedding_size, vocab_size)
         self.softmax = torch.nn.LogSoftmax(dim=1)
@@ -105,9 +105,9 @@ class Word2Vec(torch.nn.Module):
         out = self.softmax(logits)
         return out
 
-def train_word2vec(dataset, vocab, embedding_size=300, batch_size=32, num_epochs=30, learning_rate=1e-4, lr_decay=0.9):
+def train_cbow(dataset, vocab, embedding_size=300, batch_size=32, num_epochs=30, learning_rate=1e-4, lr_decay=0.9):
     '''
-    Train the Word2Vec model
+    Train the cbow model
 
     @param data: list of sentences
     @param vocab: vocabulary
@@ -119,9 +119,9 @@ def train_word2vec(dataset, vocab, embedding_size=300, batch_size=32, num_epochs
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print('Using device:', device)
 
-    model = Word2Vec(len(vocab), embedding_size).to(device)
-    if RESUME_WORD2VEC:
-        model.load_state_dict(torch.load('./model/word2vec.pth'))
+    model = CBOW(len(vocab), embedding_size).to(device)
+    if RESUME_CBOW:
+        model.load_state_dict(torch.load('./model/cbow.pth'))
         print('Model loaded')
     model.train()
     loss_fn = torch.nn.CrossEntropyLoss().to(device)
@@ -162,7 +162,7 @@ def train_word2vec(dataset, vocab, embedding_size=300, batch_size=32, num_epochs
 
         if epoch_loss < best_loss:
             best_loss = epoch_loss
-            torch.save(model.state_dict(), './model/word2vec.pth')
+            torch.save(model.state_dict(), './model/cbow.pth')
             print('Model saved')
 
     return model
@@ -367,19 +367,19 @@ class Dataset(torch.utils.data.Dataset):
         return torch.tensor(X[..., np.newaxis].reshape(-1, batch_size)), torch.tensor(y[..., np.newaxis].reshape(-1, batch_size))
 
 
-def cosine_similarity(word2vec, word):
+def cosine_similarity(embeddings, word):
     '''
     Computes the cosine similarity between two vectors
     '''
     cos = torch.nn.CosineSimilarity(dim=1, eps=1e-6)
-    w = torch.einsum('ab, b -> ab', torch.ones_like(word2vec), word)
-    return cos(word2vec, w)
+    w = torch.einsum('ab, b -> ab', torch.ones_like(embeddings), word)
+    return cos(embeddings, w)
      
 
 
-def get_k_closest(word, vocab, word2vec, k=10):
-    word_embedding = word2vec[vocab[word]]
-    similarities = cosine_similarity(word2vec, word2vec[vocab[word]])
+def get_k_closest(word, vocab, embeddings, k=10):
+    word_embedding = embeddings[vocab[word]]
+    similarities = cosine_similarity(embeddings, embeddings[vocab[word]])
     best = list(torch.argsort(similarities)[-k:].numpy().flatten())
     worst = list(torch.argsort(similarities)[:k].numpy().flatten())
     best_words = [v for v in vocab.items() if v[1] in best]
@@ -392,10 +392,10 @@ def get_k_closest(word, vocab, word2vec, k=10):
 
 
 
-def plot_embeddings(vocab, word2vec):
+def plot_embeddings(vocab, embeddings):
     from sklearn.decomposition import PCA
     pca = PCA(n_components=2)
-    x_new = pca.fit_transform(word2vec)
+    x_new = pca.fit_transform(embeddings)
     plt.scatter(x_new[:,0], x_new[:,1])
     plt.xlabel('PC1')
     plt.ylabel('PC2')
@@ -403,12 +403,12 @@ def plot_embeddings(vocab, word2vec):
     
 
 
-def plot_embeddings_close_to_word(vocab, word2vec, word, k=10):
+def plot_embeddings_close_to_word(vocab, embeddings, word, k=10):
     from sklearn.decomposition import PCA
     inv_vocab = {v: k for k, v in vocab.items()}
     pca = PCA(n_components=2)
     
-    similarities = cosine_similarity(word2vec,  word)
+    similarities = cosine_similarity(embeddings,  word)
     
     # print best and worst scores
     
@@ -427,7 +427,7 @@ def plot_embeddings_close_to_word(vocab, word2vec, word, k=10):
     
     # plot best words
     
-    best = word2vec[best_idxs]
+    best = embeddings[best_idxs]
     x_new = pca.fit_transform(best)
     labels_of_x_new = [inv_vocab[i] for i in best_idxs]
 
@@ -450,21 +450,21 @@ def main():
 
     dataset = Dataset(sentences, labels, vocab)
 
-    # train word2vec
+    # train cbow
 
-    if TRAIN_WORD2VEC:
-        model = train_word2vec(dataset, vocab, embedding_size, batch_size, num_epochs, learning_rate, lr_decay=lr_decay)
+    if TRAIN_CBOW:
+        model = train_cbow(dataset, vocab, embedding_size, batch_size, num_epochs, learning_rate, lr_decay=lr_decay)
     else:
-        model = Word2Vec(len(vocab), embedding_size)
-        model.load_state_dict(torch.load('./model/word2vec.pth'))
+        model = CBOW(len(vocab), embedding_size)
+        model.load_state_dict(torch.load('./model/cbow.pth'))
         model.eval()
         
-    W2V_WEIGHTS = model.lin_layer.weight
+    CBOW_WEIGHTS = model.lin_layer.weight
         
-    TEST_WORD = "august"
+    TEST_WORD = "april"
     
     if PLOT_EMBEDDINGS:
-        plot_embeddings_close_to_word(vocab, W2V_WEIGHTS.detach(), W2V_WEIGHTS[vocab[TEST_WORD]], k=30)
+        plot_embeddings_close_to_word(vocab, CBOW_WEIGHTS.detach(), CBOW_WEIGHTS[vocab[TEST_WORD]], k=30)
 
 
 if __name__ == "__main__":
