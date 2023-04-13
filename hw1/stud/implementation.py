@@ -140,7 +140,6 @@ def generate_vocab_sentences_labels(path, save=True):
             if freq[i] <= 3:
                 vocab.remove(tokens[i])
 
-
     # one hot encode vocabulary
         vocab_mapping = {}
         vocab_len = len(vocab)
@@ -251,8 +250,6 @@ class Dataset(torch.utils.data.Dataset):
                         X.append(self.vocab[sentence[j]])
                         y.append(self.vocab[word])
 
-                
-                # print(word, [sentence[j] for j in range(max(0, i - window_size), min(len(sentence) - 1, i + window_size)) if j != i])
         print(len(X))
         print(len(y))
                 
