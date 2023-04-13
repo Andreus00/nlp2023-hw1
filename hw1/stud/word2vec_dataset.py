@@ -83,10 +83,14 @@ class Word2VecDataset(torch.utils.data.IterableDataset):
 
         with open(path, 'r') as json_file:
             json_list = list(json_file)
+        
+        filt = lambda x: x not in stopwords and not re.match(r"(?=\S*['-])([a-zA-Z'-]+)", x) and not any([not c.isalnum() for c in x])
 
         for json_str in tqdm(json_list):
             result = json.loads(json_str)
-            sentences.append([token.lower() for token in result['tokens'] if token not in stopwords])
+            sentences.append([token.lower() for token in result['tokens'] if filt(token)])
+            
+                   
 
         return sentences
 
@@ -140,4 +144,6 @@ class Word2VecDataset(torch.utils.data.IterableDataset):
                 paragraph.append(id_)
             data.append(paragraph)
         # list of lists of indices, where each sentence is a list of indices, ignoring UNK
+        
+        print(self.word2id['the'])
         self.data_idx = data
