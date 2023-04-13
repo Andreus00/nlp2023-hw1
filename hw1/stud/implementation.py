@@ -9,24 +9,11 @@ from tqdm import tqdm
 import json
 import matplotlib.pyplot as plt
 import random
+from cbow import CBOW, train_cbow
+import config
 
 
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-
-batch_size = 256
-learning_rate = 3e-3
-lr_decay=1
-num_epochs = 100
-embedding_size = 300
-window_size = 5
-
-
-TESTING = True
-
-GENERATE_VOCAB = False
-PLOT_EMBEDDINGS = True
-RESUME_CBOW = True
-TRAIN_CBOW = False
 
 
 def build_model(device: str) -> Model:
@@ -77,95 +64,6 @@ class StudentModel(Model):
         # remember to respect the same order of tokens!
         pass
 
-
-class CBOW(torch.nn.Module):
-    '''
-    CBOW model
-    '''
-    def __init__(self, vocab_size, embedding_size):
-        '''
-        Init the CBOW model
-
-        @param vocab_size: size of the vocabulary
-        @param embedding_size: size of the embedding
-        '''
-        super(CBOW, self).__init__()
-        self.embeding = torch.nn.Embedding(vocab_size, embedding_size)
-        self.lin_layer = torch.nn.Linear(embedding_size, vocab_size)
-        self.softmax = torch.nn.LogSoftmax(dim=1)
-
-    def forward(self, input):
-        '''
-        Encode the input with the dense layer and decode it with the linear layer
-
-        @param input: input tensor of shape (batch_size, seq_len)
-        '''
-        hidden = self.embeding(input)
-        logits = self.lin_layer(hidden)
-        out = self.softmax(logits)
-        return out
-
-def train_cbow(dataset, vocab, embedding_size=300, batch_size=32, num_epochs=30, learning_rate=1e-4, lr_decay=0.9):
-    '''
-    Train the cbow model
-
-    @param data: list of sentences
-    @param vocab: vocabulary
-    @param embedding_size: size of the embedding
-    @param batch_size: size of the batch
-    @param num_epochs: number of epochs
-    @param learning_rate: learning rate
-    '''
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    print('Using device:', device)
-
-    model = CBOW(len(vocab), embedding_size).to(device)
-    if RESUME_CBOW:
-        model.load_state_dict(torch.load('./model/cbow.pth'))
-        print('Model loaded')
-    model.train()
-    loss_fn = torch.nn.CrossEntropyLoss().to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-
-    best_loss = float('inf')
-    X, y = dataset.generate_data(batch_size)
-    
-    
-    for epoch in range(num_epochs):
-        print(f'Epoch {epoch + 1}/{num_epochs}')
-        print('-' * 10)
-
-        epoch_loss = 0
-
-        i = 1
-        bar = tqdm(zip(X, y), total=len(X))
-        
-        for X_, y_ in bar:  #dataset.iterate_cbow(batch_size):
-            X_ = X_.to(device)
-            y_ = y_.to(device)
-            optimizer.zero_grad()
-            outputs = model(X_)
-            loss = loss_fn(outputs, y_)
-            loss.backward()
-            optimizer.step()
-            epoch_loss += loss.item()
-            i += 1
-        learning_rate *= lr_decay
-        for g in optimizer.param_groups:
-            g['lr'] = learning_rate
-        
-        print("lr:", learning_rate)
-
-        
-        print(f'Loss: {epoch_loss}')
-        print()
-
-        if epoch_loss < best_loss:
-            best_loss = epoch_loss
-            torch.save(model.state_dict(), './model/cbow.pth')
-            print('Model saved')
-
-    return model
 
 
 def one_hot(word_idx, length):
@@ -299,8 +197,8 @@ class Dataset(torch.utils.data.Dataset):
             sentence = [w.lower() for w in self.sentences[i] if w.lower() in self.vocab.keys()]
             for i in range(len(sentence)):
                 word = sentence[i]
-                start = max(0, i - window_size)
-                end = min(len(sentence) - 1, i + window_size)
+                start = max(0, i - config.window_size)
+                end = min(len(sentence) - 1, i + config.window_size)
                 tot = end - start
                 for j in range(start, end):
                     if j != i:
@@ -324,8 +222,8 @@ class Dataset(torch.utils.data.Dataset):
             sentence = [w.lower() for w in self.sentences[i] if w.lower() in self.vocab.keys()]
             for i in range(len(sentence)):
                 word = sentence[i]
-                start = max(0, i - window_size)
-                end = min(len(sentence) - 1, i + window_size)
+                start = max(0, i - config.window_size)
+                end = min(len(sentence) - 1, i + config.window_size)
                 tot = end - start
                 for j in range(start, end):
                     if j != i:
@@ -345,8 +243,8 @@ class Dataset(torch.utils.data.Dataset):
             sentence = [w.lower() for w in sentence if w.lower() in self.vocab.keys()]
             for i in range(len(sentence)):
                 word = sentence[i]
-                start = max(0, i - window_size)
-                end = min(len(sentence) - 1, i + window_size)
+                start = max(0, i - config.window_size)
+                end = min(len(sentence) - 1, i + config.window_size)
                 tot = end - start
                 for j in range(start, end):
                     if j != i:
@@ -445,17 +343,17 @@ def plot_embeddings_close_to_word(vocab, embeddings, word, k=10):
 
 
 def main():
-    vocab, sentences, labels = generate_vocab_sentences_labels('./data/train.jsonl', save=GENERATE_VOCAB)
+    vocab, sentences, labels = generate_vocab_sentences_labels('./data/train.jsonl', save=config.GENERATE_VOCAB)
     print("Vocab Len:", len(vocab))
 
     dataset = Dataset(sentences, labels, vocab)
 
     # train cbow
 
-    if TRAIN_CBOW:
-        model = train_cbow(dataset, vocab, embedding_size, batch_size, num_epochs, learning_rate, lr_decay=lr_decay)
+    if config.TRAIN_CBOW:
+        model = train_cbow(dataset, vocab, config.embedding_size, config.batch_size, config.num_epochs, config.learning_rate, lr_decay=config.lr_decay)
     else:
-        model = CBOW(len(vocab), embedding_size)
+        model = CBOW(len(vocab), config.embedding_size)
         model.load_state_dict(torch.load('./model/cbow.pth'))
         model.eval()
         
@@ -463,7 +361,7 @@ def main():
         
     TEST_WORD = "april"
     
-    if PLOT_EMBEDDINGS:
+    if config.PLOT_EMBEDDINGS:
         plot_embeddings_close_to_word(vocab, CBOW_WEIGHTS.detach(), CBOW_WEIGHTS[vocab[TEST_WORD]], k=30)
 
 
