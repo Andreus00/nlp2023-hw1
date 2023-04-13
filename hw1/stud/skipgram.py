@@ -1,18 +1,8 @@
-from sklearn.decomposition import PCA
-from torch import FloatTensor as FT
-from torch import LongTensor as LT
-import matplotlib.pyplot as plt
 import torch.nn as nn
-import collections
-import numpy as np
 import torch
-import json
-import os
-import re
 import config
 from word2vec_dataset import Word2VecDataset
 from loss import NEGLoss
-from tqdm.auto import tqdm
 
 
 

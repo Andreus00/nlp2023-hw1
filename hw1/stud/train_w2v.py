@@ -1,4 +1,3 @@
-
 from sklearn.decomposition import PCA
 from torch import FloatTensor as FT
 from torch import LongTensor as LT
@@ -81,7 +80,6 @@ print('Using Negative Sampling: ', config.NEGATIVE_SAMPLING)
 
 dataset = Word2VecDataset(config.train_file, config.vocab_size, config.UNK_TOKEN, window_size=5)
 
-
 model = CBOW(config.vocab_size, embedding_dim=300, id2word=dataset.id2word,
                  word_counts=dataset.frequency, NEG_SAMPLING=config.NEGATIVE_SAMPLING)
 
@@ -89,13 +87,12 @@ model = CBOW(config.vocab_size, embedding_dim=300, id2word=dataset.id2word,
 optimizer = torch.optim.SGD(model.parameters(), lr=config.learning_rate, weight_decay=config.lr_decay)
 trainer = Trainer(model, optimizer)
 
-dataloader = torch.utils.data.DataLoader(dataset, batch_size=128) #it batches data for us
+dataloader = torch.utils.data.DataLoader(dataset, batch_size=config.batch_size) #it batches data for us
 
-avg_loss = trainer.train(dataloader, config.OUTPUT_SKIPGRAM, epochs=100)
+avg_loss = trainer.train(dataloader, config.OUTPUT_SKIPGRAM, epochs=config.num_epochs)
 
 for epoch in [0, 50, 99]:
   ## load model from checkpoint
-
   model.load_state_dict(torch.load(os.path.join(config.OUTPUT_SKIPGRAM, 'state_{}.pt'.format(epoch))))
 
   # set the model in evaluation mode

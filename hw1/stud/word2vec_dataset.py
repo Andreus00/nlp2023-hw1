@@ -53,7 +53,12 @@ class Word2VecDataset(torch.utils.data.IterableDataset):
                             target = self.word2id[sentence[target_idx]]
                             # index of input word
                             current_word_id = self.word2id[current_word]
-                            output_dict = {'targets':target, 'inputs':current_word_id}
+                            if config.ALGORITHM == config.ALGORITHM_SKIPGRAM:
+                                output_dict = {'targets':target, 'inputs':current_word_id}
+                            elif config.ALGORITHM == config.ALGORITHM_CBOW:
+                                output_dict = {'targets':current_word_id, 'inputs':target}
+                            else:
+                                raise ValueError("Invalid algorithm: {}".format(config.ALGORITHM))
 
                             yield output_dict
 
