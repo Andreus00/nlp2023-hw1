@@ -2,9 +2,9 @@ import numpy as np
 import torch
 from loss import NEGLoss
 import config
+from interface import Embedding
 
-
-class CBOW(torch.nn.Module):
+class CBOW(torch.nn.Module, Embedding):
     '''
     CBOW model
     '''
@@ -17,7 +17,7 @@ class CBOW(torch.nn.Module):
         '''
         super(CBOW, self).__init__()
         self.lin_layer = torch.nn.Linear(vocab_size, embedding_dim)
-        self.embedding = torch.nn.Linear(embedding_dim, vocab_size)
+        self.embeddings = torch.nn.Linear(embedding_dim, vocab_size)
         
         if NEG_SAMPLING:
             self.loss_function = NEGLoss(id2word, word_counts)
@@ -31,10 +31,13 @@ class CBOW(torch.nn.Module):
         @param input: input tensor of shape (batch_size, seq_len)
         '''
         hidden = self.lin_layer(input)
-        output_embeddings = self.embedding(hidden)
+        output_embeddings = self.embeddings(hidden)
         if isinstance(self.loss_function, NEGLoss):
             output = torch.nn.functional.log_softmax(output_embeddings, dim=-1)
         else:
             # CrossEntropyLoss applies log_softmax internally
             output = output_embeddings
         return output
+    
+    def get_embeddings(self):
+        return self.embeddings.weight.T

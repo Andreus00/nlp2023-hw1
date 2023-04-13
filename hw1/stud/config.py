@@ -6,18 +6,18 @@ OUTPUT_CBOW = "./model/cbow/"
 USE_CBOW = 0
 USE_SKIPGRAM = 1
 
-ALGORITHM = USE_CBOW
+ALGORITHM = USE_SKIPGRAM
 
 OUTPUT_PATH = OUTPUT_CBOW if ALGORITHM == USE_CBOW else OUTPUT_SKIPGRAM
 
 batch_size = 256
-learning_rate = 3e-3
-weight_decay = 1e-5
+learning_rate = 1e-2
+weight_decay = 0
 lr_decay=1
-num_epochs = 100
+num_epochs = 10
 embedding_size = 300
 window_size = 5
-vocab_size = 10000
+vocab_size = 27986
 
 
 UNK_TOKEN = "UNK"
@@ -26,8 +26,9 @@ NEGATIVE_SAMPLING = True
 
 GENERATE_VOCAB = False
 PLOT_EMBEDDINGS = True
-RESUME = True
+RESUME = False
 TRAIN = True
+EVALUATE = True
 
 
 import torch

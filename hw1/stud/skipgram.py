@@ -3,10 +3,10 @@ import torch
 import config
 from word2vec_dataset import Word2VecDataset
 from loss import NEGLoss
+from interface import Embedding
 
 
-
-class SkipGram(nn.Module):
+class SkipGram(nn.Module, Embedding):
 
     def __init__(self, vocabulary_size, embedding_dim, id2word, word_counts, NEG_SAMPLING=False):
         super(SkipGram, self).__init__()
@@ -33,6 +33,10 @@ class SkipGram(nn.Module):
             # CrossEntropyLoss applies log_softmax internally
             output = output_embeddings
         return output
+    
+
+    def get_embeddings(self):
+        return self.embeddings.weight
     
 
 

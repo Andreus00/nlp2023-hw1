@@ -143,7 +143,5 @@ class Word2VecDataset(torch.utils.data.IterableDataset):
                     continue
                 paragraph.append(id_)
             data.append(paragraph)
-        # list of lists of indices, where each sentence is a list of indices, ignoring UNK
-        
-        print(self.word2id['the'])
+        # list of lists of indices, where each sentence is a list of indices, ignoring UNK        
         self.data_idx = data

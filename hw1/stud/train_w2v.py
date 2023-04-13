@@ -62,7 +62,7 @@ class Trainer():
                 len_train += 1
             avg_epoch_loss = epoch_loss / len_train
 
-            print('Epoch: {} avg loss = {:0.4f}'.format(epoch, avg_epoch_loss))
+            print('Epoch: {} avg loss = {:0.10f}'.format(epoch, avg_epoch_loss))
 
             train_loss += avg_epoch_loss
             torch.save(self.model.state_dict(),
@@ -79,40 +79,47 @@ torch.manual_seed(42)
 print('Using Negative Sampling: ', config.NEGATIVE_SAMPLING)
 
 dataset = Word2VecDataset(config.train_file, config.vocab_size, config.UNK_TOKEN, window_size=5)
-
-model = CBOW(config.vocab_size, embedding_dim=300, id2word=dataset.id2word,
-                 word_counts=dataset.frequency, NEG_SAMPLING=config.NEGATIVE_SAMPLING)
+model = None
+if config.ALGORITHM == config.USE_SKIPGRAM:
+    model = SkipGram(config.vocab_size, embedding_dim=300, id2word=dataset.id2word,
+                     word_counts=dataset.frequency, NEG_SAMPLING=config.NEGATIVE_SAMPLING)
+elif config.ALGORITHM == config.USE_CBOW:
+    model = CBOW(config.vocab_size, embedding_dim=300, id2word=dataset.id2word,
+                    word_counts=dataset.frequency, NEG_SAMPLING=config.NEGATIVE_SAMPLING)
+else:
+    raise ValueError('Invalid algorithm')
 
 # define an optimizer (stochastic gradient descent) to update the parameters
 optimizer = torch.optim.SGD(model.parameters(), lr=config.learning_rate, weight_decay=config.lr_decay)
-trainer = Trainer(model, optimizer)
 
-dataloader = torch.utils.data.DataLoader(dataset, batch_size=config.batch_size) #it batches data for us
+if config.TRAIN:
+    trainer = Trainer(model, optimizer)
+    dataloader = torch.utils.data.DataLoader(dataset, batch_size=config.batch_size) #it batches data for us
+    avg_loss = trainer.train(dataloader, config.OUTPUT_PATH, epochs=config.num_epochs)
 
-avg_loss = trainer.train(dataloader, config.OUTPUT_SKIPGRAM, epochs=config.num_epochs)
+if config.EVALUATE:
+    for epoch in [0, config.num_epochs // 2, config.num_epochs - 1]:
+        ## load model from checkpoint
+        model.load_state_dict(torch.load(os.path.join(config.OUTPUT_PATH, 'state_{}.pt'.format(epoch))))
 
-for epoch in [0, 50, 99]:
-  ## load model from checkpoint
-  model.load_state_dict(torch.load(os.path.join(config.OUTPUT_SKIPGRAM, 'state_{}.pt'.format(epoch))))
+        # set the model in evaluation mode
+        # (disables dropout, does not update parameters and gradient)
+        model.eval()
 
-  # set the model in evaluation mode
-  # (disables dropout, does not update parameters and gradient)
-  model.eval()
+        # retrieve the trained embeddings
+        embeddings = model.get_embeddings()
+        
+        # pick some words to visualise
+        words = ['dog', 'horse', 'animals', 'france', 'italy', 'parents']
 
-  # retrieve the trained embeddings
-  embeddings = model.embeddings.weight
-  
-  # pick some words to visualise
-  words = ['dog', 'horse', 'animal', 'france', 'italy', 'parents']
+        # perform PCA to reduce our 300d embeddings to 2d points that can be plotted
+        pca = PCA(n_components=2)
+        pca_result = pca.fit_transform(embeddings.detach().t().cpu()) # .t() transpose the embeddings
 
-  # perform PCA to reduce our 300d embeddings to 2d points that can be plotted
-  pca = PCA(n_components=2)
-  pca_result = pca.fit_transform(embeddings.detach().t().cpu()) # .t() transpose the embeddings
-
-  indexes = [dataset.word2id[x] for x in words]
-  points = [pca_result[i] for i in indexes]
-  for i,(x,y) in enumerate(points):
-      plt.plot(x, y, 'ro')
-      plt.text(x, y, words[i], fontsize=12) # add a point label, shifted wrt to the point
-  plt.title('epoch {}'.format(epoch))
-  plt.show()
+        indexes = [dataset.word2id[x] for x in words]
+        points = [pca_result[i] for i in indexes]
+        for i,(x,y) in enumerate(points):
+            plt.plot(x, y, 'ro')
+            plt.text(x, y, words[i], fontsize=12) # add a point label, shifted wrt to the point
+        plt.title('epoch {}'.format(epoch))
+        plt.show()
