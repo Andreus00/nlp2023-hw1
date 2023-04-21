@@ -20,7 +20,7 @@ OUTPUT_CLASSIFIER = "./model/classifier/"
 
 batch_size = 128
 learning_rate = 1e-3 # try 1e-6
-weight_decay = 1e-4
+weight_decay = 3e-4
 lr_decay=1
 num_epochs = 30
 embedding_size = 300
@@ -35,7 +35,7 @@ NEGATIVE_SAMPLING = True
 
 GENERATE_VOCAB = False
 PLOT_EMBEDDINGS = True
-RESUME = "model/classifier/double-bilstm-resblocks-glove.pt"
+RESUME = "model/classifier/double-bilstm-resblock-glove-no-bn.pt"
 TRAIN = True
 EVALUATE = True
 TRAIN_CLASSIFIER = True

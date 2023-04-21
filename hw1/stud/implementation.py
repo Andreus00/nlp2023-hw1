@@ -14,6 +14,7 @@ from embeddings_skipgram import SkipGram
 from dataset_word2vec import Word2VecDataset
 import config
 from torch.nn.utils.rnn import pad_sequence, pack_padded_sequence
+import classes
 # import gensim
 # from gensim import downloader as api
 
@@ -24,7 +25,7 @@ device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cp
 def build_model(device: str) -> Model:
     # STUDENT: return StudentModel()
     # STUDENT: your model MUST be loaded on the device "device" indicates
-    return StudentModel()
+    return StudentModel().to(device)
 
 
 class RandomBaseline(Model):
@@ -60,13 +61,13 @@ class ResidualBlock(torch.nn.Module):
         self.lin_layer = torch.nn.Linear(in_channels, out_channels)
         self.activation = torch.nn.ReLU()
         self.shortcut = torch.nn.Linear(in_channels, out_channels) if in_channels != out_channels else torch.nn.Identity()
-        self.bn = torch.nn.BatchNorm1d(config.batch_size)
+        # self.bn = torch.nn.BatchNorm1d(config.batch_size)
 
     def forward(self, x):
         residual = x
         x = self.lin_layer(x)
         x += self.shortcut(residual)
-        x = x.permute(1, 0, 2)
+        # x = x.permute(1, 0, 2)
         # if x.shape[1] != config.batch_size:
         #     last = x.shape[1]
         #     x = torch.nn.functional.pad(x, (0, 0, 0, config.batch_size - last))
@@ -74,9 +75,9 @@ class ResidualBlock(torch.nn.Module):
         #     # remove padding
         #     x = x[:last]
 
-        x = self.bn(x)
+        # x = self.bn(x)
 
-        x = x.permute(1, 0, 2)
+        # x = x.permute(1, 0, 2)
         x = self.activation(x)
         return x
     
@@ -183,7 +184,7 @@ class StudentModel(Model, torch.nn.Module):
         self.loss = torch.nn.CrossEntropyLoss(ignore_index=-100)
 
         if config.RESUME != None:
-            self.load_state_dict(torch.load(config.RESUME, map_location=torch.device('cpu')))
+            self.load_state_dict(torch.load(config.RESUME, map_location=torch.device(device)))
             self.eval()
 
 
@@ -208,17 +209,24 @@ class StudentModel(Model, torch.nn.Module):
                 cur_sentence[k] = self.get_key(cur_sentence[k])
             data.append(cur_sentence)
 
-        if len(data) < config.batch_size:
-            data += [[self.vocab[config.UNK_TOKEN]]] * (config.batch_size - len(data))
         length = [len(x) for x in data]
-        inputs = torch.tensor(data)
+        inputs = [torch.tensor(x) for x in data]
         
         # pad inputs
         padded_seq = pad_sequence(inputs, batch_first=True, padding_value=config.vocab_size - 1)
         
-        output = self.forward(inputs)
+        output = self.forward(padded_seq)
+
 
         output = torch.argmax(output, dim=2).tolist()
+
+        for i in range(len(tokens)):
+            output[i] = output[i][:len(tokens[i])]
+        
+
+        for i in range(len(output)):
+            for k in range(len(output[i])):
+                output[i][k] = classes.int2class[output[i][k]]
 
         return output
 
@@ -240,3 +248,5 @@ class StudentModel(Model, torch.nn.Module):
 
 if __name__ == "__main__":
     model = StudentModel()
+    model.eval()
+    print(model.predict([["hello", "world"]]))
