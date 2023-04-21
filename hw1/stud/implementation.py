@@ -2,15 +2,20 @@ import numpy as np
 from typing import List
 import sys
 sys.path.append('hw1/')
+sys.path.append('hw1/stud/')
 from model import Model
 import re
 import torch
 from tqdm import tqdm
 import json
-import matplotlib.pyplot as plt
 import random
-from cbow import CBOW, train_cbow
+from embeddings_cbow import CBOW
+from embeddings_skipgram import SkipGram
+from dataset_word2vec import Word2VecDataset
 import config
+from torch.nn.utils.rnn import pad_sequence, pack_padded_sequence
+# import gensim
+# from gensim import downloader as api
 
 
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
@@ -19,7 +24,7 @@ device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cp
 def build_model(device: str) -> Model:
     # STUDENT: return StudentModel()
     # STUDENT: your model MUST be loaded on the device "device" indicates
-    return RandomBaseline()
+    return StudentModel()
 
 
 class RandomBaseline(Model):
@@ -48,323 +53,190 @@ class RandomBaseline(Model):
             for x in tokens
         ]
 
+class ResidualBlock(torch.nn.Module):
+    def __init__(self, in_channels, out_channels):
+        super().__init__()
+        self.in_channels, self.out_channels = in_channels, out_channels
+        self.lin_layer = torch.nn.Linear(in_channels, out_channels)
+        self.activation = torch.nn.ReLU()
+        self.shortcut = torch.nn.Linear(in_channels, out_channels) if in_channels != out_channels else torch.nn.Identity()
+        self.bn = torch.nn.BatchNorm1d(config.batch_size)
 
-class StudentModel(Model):
+    def forward(self, x):
+        residual = x
+        x = self.lin_layer(x)
+        x += self.shortcut(residual)
+        x = x.permute(1, 0, 2)
+        # if x.shape[1] != config.batch_size:
+        #     last = x.shape[1]
+        #     x = torch.nn.functional.pad(x, (0, 0, 0, config.batch_size - last))
+        #     x = self.bn(x)
+        #     # remove padding
+        #     x = x[:last]
+
+        x = self.bn(x)
+
+        x = x.permute(1, 0, 2)
+        x = self.activation(x)
+        return x
+    
+    @property
+    def should_apply_shortcut(self):
+        return self.in_channels != self.out_channels
+
+class StudentModel(Model, torch.nn.Module):
 
     # STUDENT: construct here your model
     # this class should be loading your weights and vocabulary
 
     def __init__(self):
-        # first load word2vec
+        # first load the embeddings
+        super().__init__()
+        embeddings_path = None
+        vocab_path = None
+        if config.ALGORITHM == config.USE_SKIPGRAM:
+            embeddings_path = "model/skipgram/embeddings.pt"
+            vocab_path = "model/skipgram/vocab.json"
+        elif config.ALGORITHM == config.USE_CBOW:
+            embeddings_path = "model/cbow/embeddings.pt"
+            vocab_path = "model/cbow/vocab.json"
+        elif config.ALGORITHM == config.USE_GLOVE:
+            embeddings_path = "model/glove/glove-wiki-gigaword-300.pt"
+            vocab_path = "model/glove/glove-wiki-gigaword-300-vocab.json"
+        elif config.ALGORITHM == config.USE_W2V_GENSIM:
+            embeddings_path = "model/w2v/word2vec-google-news-300.pt"
+            vocab_path = "model/w2v/word2vec-google-news-300.json"
+
+        self.embedding: torch.nn.Embedding = torch.load(embeddings_path)
+        for param in self.embedding.parameters():
+            param.requires_grad = False
+        with open(vocab_path) as f:
+            self.vocab = json.load(f)
+
+        # then create the lstm classifier
+
+        layers = []
         
-        pass
+        if config.MODEL == 0:
+
+            layers += [
+                torch.nn.LSTM(input_size=config.embedding_size, hidden_size=512, num_layers=2, batch_first=True, bidirectional=True),
+                torch.nn.GELU(),
+                torch.nn.Linear(1024, 11)
+            ]
+        elif config.MODEL == 1:
+            # multiply the inputs my a matrix of weights
+            layers += [
+                torch.nn.LSTM(input_size=config.embedding_size, hidden_size=512, num_layers=2, batch_first=True, bidirectional=True),
+                torch.nn.LSTM(input_size=1024, hidden_size=2048, num_layers=1, batch_first=True, bidirectional=True),
+                torch.nn.ReLU(),
+                torch.nn.Dropout(p=0.5),
+                ResidualBlock(4096, 4096),
+                torch.nn.Dropout(p=0.5),
+                ResidualBlock(4096, 1024),
+                torch.nn.Dropout(p=0.5),
+                torch.nn.Linear(1024, 11)
+            ]
+        elif config.MODEL == 2:
+            self.conv1 = torch.nn.Conv1d(in_channels=config.embedding_size, out_channels=512, kernel_size=7, stride=1, padding=3)
+            self.bn_1 = torch.nn.BatchNorm1d(512)
+            self.non_lin_1 = torch.nn.ReLU()
+            self.lstm_1 = torch.nn.LSTM(input_size=512, hidden_size=2048, num_layers=2, batch_first=True, bidirectional=True)
+            self.flatten_1 = torch.nn.Flatten()
+            self.lin_layer_1 = torch.nn.Linear(1024, 512)
+            self.non_lin_1_2 = torch.nn.ReLU()
+
+
+            self.conv2 = torch.nn.Conv1d(in_channels=config.embedding_size, out_channels=512, kernel_size=5, stride=1, padding=2)
+            self.bn_2 = torch.nn.BatchNorm1d(512)
+            self.non_lin_2 = torch.nn.ReLU()
+            self.lstm_2 = torch.nn.LSTM(input_size=512, hidden_size=2048, num_layers=2, batch_first=True, bidirectional=True)
+            self.flatten_2 = torch.nn.Flatten()
+            self.lin_layer_2 = torch.nn.Linear(1024, 512)
+            self.non_lin_2_2 = torch.nn.ReLU()
+
+            self.conv3 = torch.nn.Conv1d(in_channels=config.embedding_size, out_channels=512, kernel_size=3, stride=1, padding=1)
+            self.bn_3 = torch.nn.BatchNorm1d(512)
+            self.non_lin_3 = torch.nn.ReLU()
+            self.lstm_3 = torch.nn.LSTM(input_size=512, hidden_size=2048, num_layers=2, batch_first=True, bidirectional=True)
+            self.flatten_3 = torch.nn.Flatten()
+            self.lin_layer_3 = torch.nn.Linear(1024, 512)
+            self.non_lin_3_2 = torch.nn.ReLU()
+
+            self.final_lin_layer = torch.nn.Linear(512*3, 11)
+
+        elif config.MODEL == 3:
+            # multiply the inputs my a matrix of weights
+            layers += [
+                torch.nn.LSTM(input_size=config.embedding_size, hidden_size=4096, num_layers=2, batch_first=True, bidirectional=True),
+                torch.nn.ReLU(),
+                torch.nn.Linear(4096*2, 1024),
+                torch.nn.ReLU(),
+                torch.nn.Linear(1024, 11)
+            ]
+        
+        self.num_layers = len(layers)
+        for i in range(self.num_layers):
+            name = f"layer_{i}"
+            setattr(self, name, layers[i])
+
+        self.loss = torch.nn.CrossEntropyLoss(ignore_index=-100)
+
+        if config.RESUME != None:
+            self.load_state_dict(torch.load(config.RESUME, map_location=torch.device('cpu')))
+            self.eval()
+
+
+    def forward(self, input):
+        output = self.embedding(input)
+        for i in range(self.num_layers):
+            name = f"layer_{i}"
+            layer = getattr(self, name)
+            if isinstance(layer, torch.nn.LSTM):
+                output, (h, c) = layer(output)
+            else:
+                output = layer(output)
+        return output
 
     def predict(self, tokens: List[List[str]]) -> List[List[str]]:
         # STUDENT: implement here your predict function
         # remember to respect the same order of tokens!
-        pass
+        data = []
+        for i in range(len(tokens)):
+            cur_sentence = tokens[i].copy()
+            for k in range(len(cur_sentence)):
+                cur_sentence[k] = self.get_key(cur_sentence[k])
+            data.append(cur_sentence)
 
-
-
-def one_hot(word_idx, length):
-    '''
-    One hot encoding of a word
-
-    @param word: word to encode
-    @param vocab: vocabulary
-    '''
-    one_hot = torch.zeros(length)
-    one_hot[word_idx] = 1
-    return one_hot
-
-def get_sentences_labels(path):
-    '''
-    Get the sentences and labels from the dataset
-
-    @param path: path to the dataset
-    '''
-    sentences = []
-    labels = []
-
-    with open(path, 'r') as json_file:
-        json_list = list(json_file)
-
-    for json_str in tqdm(json_list):
-        result = json.loads(json_str)
-        sentences.append(result['tokens'])
-        labels.append(result['labels'])
-
-    return sentences, labels
-
-
-def generate_vocab_sentences_labels(path, save=True):
-    gist_file = open("./data/gist_stopwords.txt", "r")
-    stopwords = set()
-    try:
-        content = gist_file.read()
-        stopwords = set(content.split(","))
-    finally:
-        gist_file.close()
-
-    print("Stopwords: ", len(stopwords))
-
-    sentences = []
-    labels = []
-    vocab = []
-    json_list = []
-    word2freq = {}
-
-    with open(path, 'r') as json_file:
-        json_list = list(json_file)
-
-    for json_str in tqdm(json_list):
-        result = json.loads(json_str)
-        sentences.append(result['tokens'])
-        labels.append(result['labels'])
-        for token in result['tokens']:
-            token = token.lower()
-            if (any([not c.isalnum() for c in token]) and not re.match(r"(?=\S*['-])([a-zA-Z'-]+)", token)) or token in stopwords:
-                continue
-            vocab.append(token)
-            if token in word2freq:
-                word2freq[token] += 1
-            else:
-                word2freq[token] = 1
-
-    if save==True:
-    
-        tokens = list(word2freq.keys())
-        freq = list(word2freq.values())
-
-        for i in reversed(range(len(tokens))):
-            if freq[i] <= 3:
-                vocab.remove(tokens[i])
-
-    # one hot encode vocabulary
-        vocab_mapping = {}
-        vocab_len = len(vocab)
-        vocab = list(set(vocab))
-        vocab.sort()
-        print("Vocab length: ", vocab_len)
-        for idx, word in tqdm(enumerate(vocab)):
-            vocab_mapping[word] = idx
-        print("Vocab length mapping: ", len(vocab_mapping))
-        #save vocab to file
-        f1 = open("./data/vocab.txt", "w")
-        try:
-            f1.write(json.dumps(vocab_mapping, sort_keys=True))
-        finally:
-            f1.close()
-    
-    else:
-        f1 = open("./data/vocab.txt", "r")
-        try:
-            content = f1.read()
-            vocab_mapping = json.loads(content)
-        finally:
-            f1.close()
-
-    
-    return vocab_mapping, sentences, labels
-
-
-class Dataset(torch.utils.data.Dataset):
-    '''
-    Dataset class for the data
-    '''
-    def __init__(self, sentences, labels, vocab):
-        self.sentences = sentences
-        self.labels = labels
-        self.vocab = vocab
-
-    def __len__(self):
-        return len(self.sentences)
-
-    def __getitem__(self, idx):
-        assert idx < len(self)
-        sentence = self.sentences[idx]
-        label = self.labels[idx]
-        sentence = [w.lower() for w in sentence if w.lower() in self.vocab.keys()]
-        sentence = [self.vocab[w] for w in sentence]
-        return sentence, label
-    
-    def iterate_w2v(self, batch_size):
-        X = torch.zeros(batch_size, dtype=torch.int32)
-        y = torch.zeros(batch_size, len(self.vocab))
-        idx = 0
-        for i in tqdm(range(0, len(self.sentences))):
-            sentence = [w.lower() for w in self.sentences[i] if w.lower() in self.vocab.keys()]
-            for i in range(len(sentence)):
-                word = sentence[i]
-                start = max(0, i - config.window_size)
-                end = min(len(sentence) - 1, i + config.window_size)
-                tot = end - start
-                for j in range(start, end):
-                    if j != i:
-                        X[idx] = self.vocab[word]
-                        y[idx, :] = one_hot(self.vocab[sentence[j]], len(self.vocab))
-                        idx += 1
-                    if idx < batch_size - 1 and (random.random() < 0.4):
-                        # add negative samples
-                        X[idx] = self.vocab[word]
-                        y[idx, :] = torch.zeros(len(self.vocab))
-                        idx += 1
-                    if idx == batch_size - 1:
-                        yield X, y
-                        idx = 0
-    
-    def iterate_cbow(self, batch_size):
-        X = torch.zeros(batch_size, dtype=torch.int32)
-        y = torch.zeros(batch_size, len(self.vocab))
-        idx = 0
-        for i in tqdm(range(0, len(self.sentences))):
-            sentence = [w.lower() for w in self.sentences[i] if w.lower() in self.vocab.keys()]
-            for i in range(len(sentence)):
-                word = sentence[i]
-                start = max(0, i - config.window_size)
-                end = min(len(sentence) - 1, i + config.window_size)
-                tot = end - start
-                for j in range(start, end):
-                    if j != i:
-                        X[idx] = self.vocab[sentence[j]]
-                        y[idx, :] = one_hot(self.vocab[word], len(self.vocab))
-                        idx += 1
-                    if idx == batch_size - 1:
-                        yield X, y
-                        idx = 0
-
-    def generate_data(self, batch_size):
-        # for each word in each sentence, generate a list of surrounding words
-
-        X = []
-        y = []
-        for sentence in tqdm(self.sentences):
-            sentence = [w.lower() for w in sentence if w.lower() in self.vocab.keys()]
-            for i in range(len(sentence)):
-                word = sentence[i]
-                start = max(0, i - config.window_size)
-                end = min(len(sentence) - 1, i + config.window_size)
-                tot = end - start
-                for j in range(start, end):
-                    if j != i:
-                        X.append(self.vocab[sentence[j]])
-                        y.append(self.vocab[word])
-
-        print(len(X))
-        print(len(y))
-                
-
-        X = np.array(X)
-        y = np.array(y)
-
-        X = X[: -(X.shape[0] % batch_size)]
-        y = y[: -(y.shape[0] % batch_size)]
-        return torch.tensor(X[..., np.newaxis].reshape(-1, batch_size)), torch.tensor(y[..., np.newaxis].reshape(-1, batch_size))
-
-
-def cosine_similarity(embeddings, word):
-    '''
-    Computes the cosine similarity between two vectors
-    '''
-    cos = torch.nn.CosineSimilarity(dim=1, eps=1e-6)
-    w = torch.einsum('ab, b -> ab', torch.ones_like(embeddings), word)
-    return cos(embeddings, w)
-     
-
-
-def get_k_closest(word, vocab, embeddings, k=10):
-    word_embedding = embeddings[vocab[word]]
-    similarities = cosine_similarity(embeddings, embeddings[vocab[word]])
-    best = list(torch.argsort(similarities)[-k:].numpy().flatten())
-    worst = list(torch.argsort(similarities)[:k].numpy().flatten())
-    best_words = [v for v in vocab.items() if v[1] in best]
-    worst_words = [v for v in vocab.items() if v[1] in worst]
-    words_and_scores = [(w, similarities[i]) for w, i in best_words]
-    worse_words_and_scores = [(w, similarities[i]) for w, i in worst_words]
-    words_and_scores.sort(key=lambda x: x[1], reverse=True)
-    worse_words_and_scores.sort(key=lambda x: x[1], reverse=False)
-    return words_and_scores, worse_words_and_scores
-
-
-
-def plot_embeddings(vocab, embeddings):
-    from sklearn.decomposition import PCA
-    pca = PCA(n_components=2)
-    x_new = pca.fit_transform(embeddings)
-    plt.scatter(x_new[:,0], x_new[:,1])
-    plt.xlabel('PC1')
-    plt.ylabel('PC2')
-    plt.show()
-    
-
-
-def plot_embeddings_close_to_word(vocab, embeddings, word, k=10):
-    from sklearn.decomposition import PCA
-    inv_vocab = {v: k for k, v in vocab.items()}
-    pca = PCA(n_components=2)
-    
-    similarities = cosine_similarity(embeddings,  word)
-    
-    # print best and worst scores
-    
-    best_idxs = list(torch.argsort(similarities)[-k:].numpy().flatten())
-    worst_idxs = list(torch.argsort(similarities)[:k].numpy().flatten())
-    best_words = [v for v in vocab.items() if v[1] in best_idxs]
-    worst_words = [v for v in vocab.items() if v[1] in worst_idxs]
-    best_words_and_scores = [(w, similarities[i]) for w, i in best_words]
-    worse_words_and_scores = [(w, similarities[i]) for w, i in worst_words]
-    best_words_and_scores.sort(key=lambda x: x[1], reverse=True)
-    worse_words_and_scores.sort(key=lambda x: x[1], reverse=False)
-    print("Best Scores:", best_words_and_scores)
-    print()
-    print("Worst Scores:", worse_words_and_scores)
-    
-    
-    # plot best words
-    
-    best = embeddings[best_idxs]
-    x_new = pca.fit_transform(best)
-    labels_of_x_new = [inv_vocab[i] for i in best_idxs]
-
-    fig, ax = plt.subplots()
-    ax.scatter(x_new[:,0], x_new[:,1])
-
-    for i, txt in enumerate(labels_of_x_new):
-        ax.annotate(txt, (x_new[i][0], x_new[i][1]))
-    ax.set_xlabel('PC1')
-    ax.set_ylabel('PC2')
-    
-    plt.show()
-    
-
-
-
-def main():
-    vocab, sentences, labels = generate_vocab_sentences_labels('./data/train.jsonl', save=config.GENERATE_VOCAB)
-    print("Vocab Len:", len(vocab))
-
-    dataset = Dataset(sentences, labels, vocab)
-
-    # train cbow
-
-    if config.TRAIN_CBOW:
-        model = train_cbow(dataset, vocab, config.embedding_size, config.batch_size, config.num_epochs, config.learning_rate, lr_decay=config.lr_decay)
-    else:
-        model = CBOW(len(vocab), config.embedding_size)
-        model.load_state_dict(torch.load('./model/cbow.pth'))
-        model.eval()
+        if len(data) < config.batch_size:
+            data += [[self.vocab[config.UNK_TOKEN]]] * (config.batch_size - len(data))
+        length = [len(x) for x in data]
+        inputs = torch.tensor(data)
         
-    CBOW_WEIGHTS = model.lin_layer.weight
+        # pad inputs
+        padded_seq = pad_sequence(inputs, batch_first=True, padding_value=config.vocab_size - 1)
         
-    TEST_WORD = "april"
+        output = self.forward(inputs)
+
+        output = torch.argmax(output, dim=2).tolist()
+
+        return output
+
+    def loss_function(self, output, target):
+        # STUDENT: implement here your loss function
+        return self.loss(output, target)
+
+    def get_key(self, key):
+        if key in self.vocab:
+            return self.vocab[key]
+        else:
+            return self.vocab[config.UNK_TOKEN]
     
-    if config.PLOT_EMBEDDINGS:
-        plot_embeddings_close_to_word(vocab, CBOW_WEIGHTS.detach(), CBOW_WEIGHTS[vocab[TEST_WORD]], k=30)
+    def unfreeze_embeddings(self, lr=1e-4):
+        for param in self.embedding.parameters():
+            param.requires_grad = True
+
 
 
 if __name__ == "__main__":
-    main()
-
-
-
-# http://people.csail.mit.edu/mcollins/6864/slides/bikel.pdf
+    model = StudentModel()

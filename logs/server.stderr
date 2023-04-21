@@ -1,0 +1,21 @@
+2023-04-20T17:54:40.145238314Z [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+2023-04-20T17:54:40.145249626Z  * Running on all addresses (0.0.0.0)
+2023-04-20T17:54:40.145252104Z  * Running on http://127.0.0.1:12345
+2023-04-20T17:54:40.145253943Z  * Running on http://172.17.0.2:12345
+2023-04-20T17:54:40.145255588Z [33mPress CTRL+C to quit[0m
+2023-04-20T17:54:49.479092219Z [2023-04-20 17:54:49,476] ERROR in app: embedding(): argument 'indices' (position 2) must be Tensor, not list
+2023-04-20T17:54:49.479116527Z Traceback (most recent call last):
+2023-04-20T17:54:49.479119235Z   File "/home/app/hw1/app.py", line 17, in annotate
+2023-04-20T17:54:49.479121328Z     predictions_s = model.predict(tokens_s)
+2023-04-20T17:54:49.479123106Z   File "/home/app/hw1/stud/implementation.py", line 205, in predict
+2023-04-20T17:54:49.479124877Z     output = self.forward(inputs)
+2023-04-20T17:54:49.479126448Z   File "/home/app/hw1/stud/implementation.py", line 180, in forward
+2023-04-20T17:54:49.479128044Z     output = self.embedding(input)
+2023-04-20T17:54:49.479129589Z   File "/usr/local/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1051, in _call_impl
+2023-04-20T17:54:49.479131291Z     return forward_call(*input, **kwargs)
+2023-04-20T17:54:49.479132833Z   File "/usr/local/lib/python3.9/site-packages/torch/nn/modules/sparse.py", line 158, in forward
+2023-04-20T17:54:49.479134512Z     return F.embedding(
+2023-04-20T17:54:49.479136050Z   File "/usr/local/lib/python3.9/site-packages/torch/nn/functional.py", line 2043, in embedding
+2023-04-20T17:54:49.479137746Z     return torch.embedding(weight, input, padding_idx, scale_grad_by_freq, sparse)
+2023-04-20T17:54:49.479139389Z TypeError: embedding(): argument 'indices' (position 2) must be Tensor, not list
+2023-04-20T17:54:49.479432492Z 172.17.0.1 - - [20/Apr/2023 17:54:49] "[31m[1mPOST / HTTP/1.1[0m" 400 -
