@@ -100,8 +100,8 @@ class Trainer():
             avg_epoch_recall = cumulative_recall / len_train
 
             print('Epoch: {} avg loss = {:0.10f},  avg f1 {:0.4f} avg accuracy {:0.4f} avg precision {:0.4f}  avg recall {:0.4f}'.format(epoch, avg_epoch_loss, avg_epoch_f1, avg_epoch_accuracy, avg_epoch_precision, avg_epoch_recall))
-            with open(os.path.join(output_folder, 'train_metrics.txt'), 'a') as f:
-                        f.write('Validaton Epoch: {} avg loss = {:0.10f},  avg f1 {:0.4f} avg accuracy {:0.4f} avg precision {:0.4f}  avg recall {:0.4f}\n'.format(epoch, avg_epoch_loss, avg_epoch_f1, avg_epoch_accuracy, avg_epoch_precision, avg_epoch_recall))
+            # with open(os.path.join(output_folder, 'train_metrics.txt'), 'a') as f:
+            #             f.write('Validaton Epoch: {} avg loss = {:0.10f},  avg f1 {:0.4f} avg accuracy {:0.4f} avg precision {:0.4f}  avg recall {:0.4f}\n'.format(epoch, avg_epoch_loss, avg_epoch_f1, avg_epoch_accuracy, avg_epoch_precision, avg_epoch_recall))
 
             train_loss += avg_epoch_loss
 
@@ -158,8 +158,8 @@ class Trainer():
                     avg_val_f1 = cumulative_f1 / len_val
                     avg_val_recall = cumulative_recall / len_val
                     print('ValidationEpoch: {} avg loss = {:0.10f},  avg f1 {:0.4f} avg accuracy {:0.4f} avg precision {:0.4f}  avg recall {:0.4f}'.format(epoch, avg_val_loss, avg_val_f1, avg_val_accuracy, avg_val_precision, avg_val_recall))
-                    with open(os.path.join(output_folder, 'validation_metrics.txt'), 'a') as f:
-                        f.write('Validaton Epoch: {} avg loss = {:0.10f},  avg f1 {:0.4f} avg accuracy {:0.4f} avg precision {:0.4f}  avg recall {:0.4f}\n'.format(epoch, avg_val_loss, avg_val_f1, avg_val_accuracy, avg_val_precision, avg_val_recall))
+                    # with open(os.path.join(output_folder, 'validation_metrics.txt'), 'a') as f:
+                    #     f.write('Validaton Epoch: {} avg loss = {:0.10f},  avg f1 {:0.4f} avg accuracy {:0.4f} avg precision {:0.4f}  avg recall {:0.4f}\n'.format(epoch, avg_val_loss, avg_val_f1, avg_val_accuracy, avg_val_precision, avg_val_recall))
                     
                 if config.WANDB:
                     wandb.log({"val-acc": avg_val_accuracy, "val-loss": avg_val_loss, "val-f1": avg_val_f1, "val-precision": avg_val_precision, "val-recall": avg_val_recall, 'train_loss': avg_epoch_loss, 'train_f1': avg_epoch_f1, 'train_accuracy': avg_epoch_accuracy, 'train_precision': avg_epoch_precision, 'train_recall': avg_epoch_recall})

@@ -26,27 +26,30 @@ from gensim.test.utils import datapath
 import io
 from typing import Dict, List
 
-def LoadFastText():
-    input_file = io.open('model/fasttext/wiki-news-300d-1M-subword.vec', 'r', encoding='utf-8', newline='\n', errors='ignore')
-    no_of_words, vector_size = map(int, input_file.readline().split())
-    word_to_vector: Dict[str, List[float]] = dict()
-    for i, line in enumerate(input_file):
-        tokens = line.rstrip().split(' ')
-        word = tokens[0]
-        vector = list(map(float, tokens[1:]))
-        assert len(vector) == vector_size
-        word_to_vector[word] = vector
-    return word_to_vector
+
+# def LoadFastText():
+#     input_file = io.open('model/fasttext/wiki-news-300d-1M-subword.vec', 'r', encoding='utf-8', newline='\n', errors='ignore')
+#     no_of_words, vector_size = map(int, input_file.readline().split())
+#     word_to_vector: Dict[str, List[float]] = dict()
+#     for i, line in enumerate(input_file):
+#         tokens = line.rstrip().split(' ')
+#         word = tokens[0]
+#         vector = list(map(float, tokens[1:]))
+#         assert len(vector) == vector_size
+#         word_to_vector[word] = vector
+#     return word_to_vector
+
+# model = LoadFastText()
+# print(model["hi"])
+
 
 # TODO: implement this embedding model -> fasttext-wiki-news-subwords-300
+
 # corpus = api.load('text8')
 # model = FastText(vector_size=300, window=5, min_count=1)
 # model.build_vocab(corpus_iterable=corpus)
 # model.train(corpus_iterable=corpus, total_words=model.corpus_total_words, epochs=10)  # train
-# model.save('model/fasttext/fasttext-wiki-news-subwords-300')
-
-model = LoadFastText()
-print(model["hel"])
+# model.save('model/fasttext/fasttext-wiki-news-subwords-300.bin')
 
 # print(emb_model)
 # emb_model = gensim.models.KeyedVectors.load_word2vec_format('model/glove/glove-wiki-gigaword-300.gz')

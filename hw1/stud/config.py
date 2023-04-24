@@ -9,9 +9,12 @@ USE_CBOW = 0
 USE_SKIPGRAM = 1
 USE_GLOVE = 2
 USE_W2V_GENSIM = 3
+USE_FASTTEXT = 4
 
-ALGORITHM = USE_GLOVE
-MODEL = 1
+ALGORITHM = USE_FASTTEXT
+MODEL_HANDLES_OOV = True
+
+MODEL = 3
 
 
 OUTPUT_W2V_PATH = OUTPUT_CBOW if ALGORITHM == USE_CBOW else OUTPUT_SKIPGRAM
@@ -19,8 +22,8 @@ OUTPUT_W2V_PATH = OUTPUT_CBOW if ALGORITHM == USE_CBOW else OUTPUT_SKIPGRAM
 OUTPUT_CLASSIFIER = "./model/classifier/"
 
 batch_size = 128
-learning_rate = 1e-3 # try 1e-6
-weight_decay = 3e-4
+learning_rate = 1e-4
+weight_decay = 1e-5
 lr_decay=1
 num_epochs = 30
 embedding_size = 300
@@ -35,12 +38,13 @@ NEGATIVE_SAMPLING = True
 
 GENERATE_VOCAB = False
 PLOT_EMBEDDINGS = True
-RESUME = "model/classifier/double-bilstm-resblock-glove-no-bn.pt"
+RESUME = None # "model/classifier/best_state.pt" # "model/classifier/double-bilstm-resblock-fasttext-no-bn.pt" #  "model/classifier/double-bilstm-resblock-glove-no-bn.pt"
 TRAIN = True
 EVALUATE = True
 TRAIN_CLASSIFIER = True
 WANDB = True
 UNFREEZE_EMB = False
+NORM_IN_RESBLOCK = True
 
 
 import torch

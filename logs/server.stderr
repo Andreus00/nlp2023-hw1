@@ -1,69 +1,12 @@
-2023-04-21T12:11:46.508077411Z [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
-2023-04-21T12:11:46.508087929Z  * Running on all addresses (0.0.0.0)
-2023-04-21T12:11:46.508090487Z  * Running on http://127.0.0.1:12345
-2023-04-21T12:11:46.508092255Z  * Running on http://172.17.0.2:12345
-2023-04-21T12:11:46.508093899Z [33mPress CTRL+C to quit[0m
-2023-04-21T12:11:56.180719271Z 172.17.0.1 - - [21/Apr/2023 12:11:56] "POST / HTTP/1.1" 200 -
-2023-04-21T12:11:59.786422862Z 172.17.0.1 - - [21/Apr/2023 12:11:59] "POST / HTTP/1.1" 200 -
-2023-04-21T12:12:04.564372837Z 172.17.0.1 - - [21/Apr/2023 12:12:04] "POST / HTTP/1.1" 200 -
-2023-04-21T12:12:08.671286212Z 172.17.0.1 - - [21/Apr/2023 12:12:08] "POST / HTTP/1.1" 200 -
-2023-04-21T12:12:12.709216282Z 172.17.0.1 - - [21/Apr/2023 12:12:12] "POST / HTTP/1.1" 200 -
-2023-04-21T12:12:17.982374114Z 172.17.0.1 - - [21/Apr/2023 12:12:17] "POST / HTTP/1.1" 200 -
-2023-04-21T12:12:23.405210713Z 172.17.0.1 - - [21/Apr/2023 12:12:23] "POST / HTTP/1.1" 200 -
-2023-04-21T12:12:27.323832329Z 172.17.0.1 - - [21/Apr/2023 12:12:27] "POST / HTTP/1.1" 200 -
-2023-04-21T12:12:30.590752238Z 172.17.0.1 - - [21/Apr/2023 12:12:30] "POST / HTTP/1.1" 200 -
-2023-04-21T12:12:35.405139594Z 172.17.0.1 - - [21/Apr/2023 12:12:35] "POST / HTTP/1.1" 200 -
-2023-04-21T12:12:40.860761716Z 172.17.0.1 - - [21/Apr/2023 12:12:40] "POST / HTTP/1.1" 200 -
-2023-04-21T12:12:45.478214443Z 172.17.0.1 - - [21/Apr/2023 12:12:45] "POST / HTTP/1.1" 200 -
-2023-04-21T12:12:49.591409780Z 172.17.0.1 - - [21/Apr/2023 12:12:49] "POST / HTTP/1.1" 200 -
-2023-04-21T12:12:54.569001275Z 172.17.0.1 - - [21/Apr/2023 12:12:54] "POST / HTTP/1.1" 200 -
-2023-04-21T12:13:00.169951321Z 172.17.0.1 - - [21/Apr/2023 12:13:00] "POST / HTTP/1.1" 200 -
-2023-04-21T12:13:05.316724833Z 172.17.0.1 - - [21/Apr/2023 12:13:05] "POST / HTTP/1.1" 200 -
-2023-04-21T12:13:10.913162177Z 172.17.0.1 - - [21/Apr/2023 12:13:10] "POST / HTTP/1.1" 200 -
-2023-04-21T12:13:16.662258755Z 172.17.0.1 - - [21/Apr/2023 12:13:16] "POST / HTTP/1.1" 200 -
-2023-04-21T12:13:24.524988864Z 172.17.0.1 - - [21/Apr/2023 12:13:24] "POST / HTTP/1.1" 200 -
-2023-04-21T12:13:28.627258776Z 172.17.0.1 - - [21/Apr/2023 12:13:28] "POST / HTTP/1.1" 200 -
-2023-04-21T12:13:31.733006087Z 172.17.0.1 - - [21/Apr/2023 12:13:31] "POST / HTTP/1.1" 200 -
-2023-04-21T12:13:37.976934218Z 172.17.0.1 - - [21/Apr/2023 12:13:37] "POST / HTTP/1.1" 200 -
-2023-04-21T12:13:41.770325482Z 172.17.0.1 - - [21/Apr/2023 12:13:41] "POST / HTTP/1.1" 200 -
-2023-04-21T12:13:46.574548464Z 172.17.0.1 - - [21/Apr/2023 12:13:46] "POST / HTTP/1.1" 200 -
-2023-04-21T12:13:50.412205363Z 172.17.0.1 - - [21/Apr/2023 12:13:50] "POST / HTTP/1.1" 200 -
-2023-04-21T12:13:55.478527217Z 172.17.0.1 - - [21/Apr/2023 12:13:55] "POST / HTTP/1.1" 200 -
-2023-04-21T12:14:00.443948787Z 172.17.0.1 - - [21/Apr/2023 12:14:00] "POST / HTTP/1.1" 200 -
-2023-04-21T12:14:04.868391869Z 172.17.0.1 - - [21/Apr/2023 12:14:04] "POST / HTTP/1.1" 200 -
-2023-04-21T12:14:09.648741618Z 172.17.0.1 - - [21/Apr/2023 12:14:09] "POST / HTTP/1.1" 200 -
-2023-04-21T12:14:14.150110323Z 172.17.0.1 - - [21/Apr/2023 12:14:14] "POST / HTTP/1.1" 200 -
-2023-04-21T12:14:19.105301762Z 172.17.0.1 - - [21/Apr/2023 12:14:19] "POST / HTTP/1.1" 200 -
-2023-04-21T12:14:22.736039836Z 172.17.0.1 - - [21/Apr/2023 12:14:22] "POST / HTTP/1.1" 200 -
-2023-04-21T12:14:27.722896650Z 172.17.0.1 - - [21/Apr/2023 12:14:27] "POST / HTTP/1.1" 200 -
-2023-04-21T12:14:32.498221390Z 172.17.0.1 - - [21/Apr/2023 12:14:32] "POST / HTTP/1.1" 200 -
-2023-04-21T12:14:41.636662081Z 172.17.0.1 - - [21/Apr/2023 12:14:41] "POST / HTTP/1.1" 200 -
-2023-04-21T12:14:47.176151391Z 172.17.0.1 - - [21/Apr/2023 12:14:47] "POST / HTTP/1.1" 200 -
-2023-04-21T12:14:51.120033827Z 172.17.0.1 - - [21/Apr/2023 12:14:51] "POST / HTTP/1.1" 200 -
-2023-04-21T12:14:57.014306733Z 172.17.0.1 - - [21/Apr/2023 12:14:57] "POST / HTTP/1.1" 200 -
-2023-04-21T12:15:01.144058002Z 172.17.0.1 - - [21/Apr/2023 12:15:01] "POST / HTTP/1.1" 200 -
-2023-04-21T12:15:04.637088278Z 172.17.0.1 - - [21/Apr/2023 12:15:04] "POST / HTTP/1.1" 200 -
-2023-04-21T12:15:09.008549358Z 172.17.0.1 - - [21/Apr/2023 12:15:09] "POST / HTTP/1.1" 200 -
-2023-04-21T12:15:14.129648544Z 172.17.0.1 - - [21/Apr/2023 12:15:14] "POST / HTTP/1.1" 200 -
-2023-04-21T12:15:18.855243757Z 172.17.0.1 - - [21/Apr/2023 12:15:18] "POST / HTTP/1.1" 200 -
-2023-04-21T12:15:22.897619448Z 172.17.0.1 - - [21/Apr/2023 12:15:22] "POST / HTTP/1.1" 200 -
-2023-04-21T12:15:27.943996798Z 172.17.0.1 - - [21/Apr/2023 12:15:27] "POST / HTTP/1.1" 200 -
-2023-04-21T12:15:31.635501177Z 172.17.0.1 - - [21/Apr/2023 12:15:31] "POST / HTTP/1.1" 200 -
-2023-04-21T12:15:36.289763659Z 172.17.0.1 - - [21/Apr/2023 12:15:36] "POST / HTTP/1.1" 200 -
-2023-04-21T12:15:39.697045068Z 172.17.0.1 - - [21/Apr/2023 12:15:39] "POST / HTTP/1.1" 200 -
-2023-04-21T12:15:43.372718710Z 172.17.0.1 - - [21/Apr/2023 12:15:43] "POST / HTTP/1.1" 200 -
-2023-04-21T12:15:48.247034308Z 172.17.0.1 - - [21/Apr/2023 12:15:48] "POST / HTTP/1.1" 200 -
-2023-04-21T12:15:51.686859426Z 172.17.0.1 - - [21/Apr/2023 12:15:51] "POST / HTTP/1.1" 200 -
-2023-04-21T12:15:58.465584270Z 172.17.0.1 - - [21/Apr/2023 12:15:58] "POST / HTTP/1.1" 200 -
-2023-04-21T12:16:01.960008842Z 172.17.0.1 - - [21/Apr/2023 12:16:01] "POST / HTTP/1.1" 200 -
-2023-04-21T12:16:06.234057166Z 172.17.0.1 - - [21/Apr/2023 12:16:06] "POST / HTTP/1.1" 200 -
-2023-04-21T12:16:11.556628358Z 172.17.0.1 - - [21/Apr/2023 12:16:11] "POST / HTTP/1.1" 200 -
-2023-04-21T12:16:16.538284189Z 172.17.0.1 - - [21/Apr/2023 12:16:16] "POST / HTTP/1.1" 200 -
-2023-04-21T12:16:20.526865727Z 172.17.0.1 - - [21/Apr/2023 12:16:20] "POST / HTTP/1.1" 200 -
-2023-04-21T12:16:25.532969540Z 172.17.0.1 - - [21/Apr/2023 12:16:25] "POST / HTTP/1.1" 200 -
-2023-04-21T12:16:29.027638493Z 172.17.0.1 - - [21/Apr/2023 12:16:29] "POST / HTTP/1.1" 200 -
-2023-04-21T12:16:32.996410733Z 172.17.0.1 - - [21/Apr/2023 12:16:32] "POST / HTTP/1.1" 200 -
-2023-04-21T12:16:38.007039013Z 172.17.0.1 - - [21/Apr/2023 12:16:38] "POST / HTTP/1.1" 200 -
-2023-04-21T12:16:42.957168548Z 172.17.0.1 - - [21/Apr/2023 12:16:42] "POST / HTTP/1.1" 200 -
-2023-04-21T12:16:47.666434688Z 172.17.0.1 - - [21/Apr/2023 12:16:47] "POST / HTTP/1.1" 200 -
-2023-04-21T12:16:49.787183529Z 172.17.0.1 - - [21/Apr/2023 12:16:49] "POST / HTTP/1.1" 200 -
+2023-04-24T14:18:01.210672403Z Traceback (most recent call last):
+2023-04-24T14:18:01.210709152Z   File "/home/app/hw1/app.py", line 6, in <module>
+2023-04-24T14:18:01.210714230Z     model = build_model("cpu")
+2023-04-24T14:18:01.210716207Z   File "/home/app/hw1/stud/implementation.py", line 29, in build_model
+2023-04-24T14:18:01.210718171Z     return StudentModel().to(device)
+2023-04-24T14:18:01.210720060Z   File "/home/app/hw1/stud/implementation.py", line 213, in __init__
+2023-04-24T14:18:01.210771637Z     self.load_state_dict(torch.load(config.RESUME, map_location=torch.device(device)))
+2023-04-24T14:18:01.210782111Z   File "/usr/local/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1406, in load_state_dict
+2023-04-24T14:18:01.210870223Z     raise RuntimeError('Error(s) in loading state_dict for {}:\n\t{}'.format(
+2023-04-24T14:18:01.210873105Z RuntimeError: Error(s) in loading state_dict for StudentModel:
+2023-04-24T14:18:01.210877001Z 	Missing key(s) in state_dict: "layer_0.weight_ih_l0", "layer_0.weight_hh_l0", "layer_0.bias_ih_l0", "layer_0.bias_hh_l0", "layer_0.weight_ih_l0_reverse", "layer_0.weight_hh_l0_reverse", "layer_0.bias_ih_l0_reverse", "layer_0.bias_hh_l0_reverse", "layer_0.weight_ih_l1", "layer_0.weight_hh_l1", "layer_0.bias_ih_l1", "layer_0.bias_hh_l1", "layer_0.weight_ih_l1_reverse", "layer_0.weight_hh_l1_reverse", "layer_0.bias_ih_l1_reverse", "layer_0.bias_hh_l1_reverse", "layer_1.weight_ih_l0", "layer_1.weight_hh_l0", "layer_1.bias_ih_l0", "layer_1.bias_hh_l0", "layer_1.weight_ih_l0_reverse", "layer_1.weight_hh_l0_reverse", "layer_1.bias_ih_l0_reverse", "layer_1.bias_hh_l0_reverse", "layer_4.lin_layer.weight", "layer_4.lin_layer.bias", "layer_6.lin_layer.weight", "layer_6.lin_layer.bias", "layer_8.lin_layer.weight", "layer_8.lin_layer.bias", "layer_10.lin_layer.weight", "layer_10.lin_layer.bias", "layer_10.shortcut.weight", "layer_10.shortcut.bias", "layer_12.lin_layer.weight", "layer_12.lin_layer.bias", "layer_14.lin_layer.weight", "layer_14.lin_layer.bias", "layer_16.lin_layer.weight", "layer_16.lin_layer.bias", "layer_18.weight", "layer_18.bias". 
+2023-04-24T14:18:01.210885539Z 	Unexpected key(s) in state_dict: "layer_0.lin_layer.weight", "layer_0.lin_layer.bias", "layer_0.norm.weight", "layer_0.norm.bias", "layer_2.weight_ih_l0", "layer_2.weight_hh_l0", "layer_2.bias_ih_l0", "layer_2.bias_hh_l0", "layer_2.weight_ih_l0_reverse", "layer_2.weight_hh_l0_reverse", "layer_2.bias_ih_l0_reverse", "layer_2.bias_hh_l0_reverse", "layer_2.weight_ih_l1", "layer_2.weight_hh_l1", "layer_2.bias_ih_l1", "layer_2.bias_hh_l1", "layer_2.weight_ih_l1_reverse", "layer_2.weight_hh_l1_reverse", "layer_2.bias_ih_l1_reverse", "layer_2.bias_hh_l1_reverse", "layer_5.lin_layer.weight", "layer_5.lin_layer.bias", "layer_5.norm.weight", "layer_5.norm.bias", "layer_7.lin_layer.weight", "layer_7.lin_layer.bias", "layer_7.norm.weight", "layer_7.norm.bias", "layer_9.lin_layer.weight", "layer_9.lin_layer.bias", "layer_9.shortcut.weight", "layer_9.shortcut.bias", "layer_9.norm.weight", "layer_9.norm.bias", "layer_11.lin_layer.weight", "layer_11.lin_layer.bias", "layer_11.norm.weight", "layer_11.norm.bias", "layer_13.lin_layer.weight", "layer_13.lin_layer.bias", "layer_13.norm.weight", "layer_13.norm.bias", "layer_15.weight", "layer_15.bias". 

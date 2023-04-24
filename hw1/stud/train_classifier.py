@@ -62,7 +62,7 @@ else:
 	validation_dataset.id2word = train_dataset.id2word
 # define an optimizer to update the parameters
 
-optimizer = torch.optim.Adagrad(model.parameters(), lr=config.learning_rate, weight_decay=config.weight_decay)
+optimizer = torch.optim.Adam(model.parameters(), lr=config.learning_rate, weight_decay=config.weight_decay)
 
 
 ## Train the model
