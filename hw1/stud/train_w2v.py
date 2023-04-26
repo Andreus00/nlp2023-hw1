@@ -21,7 +21,6 @@ from trainer import Trainer
 torch.manual_seed(42)
 
 ## load the dataset and the model
-
 dataset = Word2VecDataset(config.train_file, config.vocab_size, config.UNK_TOKEN, window_size=5)
 model = None
 if config.ALGORITHM == config.USE_SKIPGRAM:
@@ -34,12 +33,10 @@ else:
     raise ValueError('Invalid algorithm')
 
 # define an optimizer to update the parameters
-
 optimizer = torch.optim.Adam(model.parameters(), lr=config.learning_rate, weight_decay=config.weight_decay)
 
 
 ## Train the model
-
 if config.TRAIN:
     trainer = Trainer(model, optimizer)
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=config.batch_size) #it batches data for us

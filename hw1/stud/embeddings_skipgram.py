@@ -7,6 +7,11 @@ from embeddings_interface import Embedding
 
 
 class SkipGram(nn.Module, Embedding):
+    '''
+    SkipGram model.
+
+    Partially taken from the notebook.
+    '''
 
     def __init__(self, vocabulary_size, embedding_dim, id2word, word_counts, NEG_SAMPLING=False):
         super(SkipGram, self).__init__()
@@ -20,7 +25,6 @@ class SkipGram(nn.Module, Embedding):
             self.loss_function = nn.CrossEntropyLoss()
 
     def forward(self, input_idx):
-        # This method defines the outputs of a forward pass on the model
         input_embeddings = self.embeddings(input_idx)  # compute the embeddings for the input words
         output_embeddings = self.output_weights(input_embeddings)
         if isinstance(self.loss_function, NEGLoss):

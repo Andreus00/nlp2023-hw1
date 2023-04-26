@@ -15,10 +15,7 @@ from dataset_word2vec import Word2VecDataset
 import config
 from torch.nn.utils.rnn import pad_sequence, pack_padded_sequence
 import classes
-# import gensim
-# from gensim import downloader as api
 from fasttext import FastTextWrapper
-
 
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
@@ -55,9 +52,22 @@ class RandomBaseline(Model):
             for x in tokens
         ]
 
+class ExtractOutputFromLSTM(torch.nn.Module):
+    '''
+    Class used after an LSTM layer to extract the output from the LSTM.
+    '''
+    def __init__(self, *args, **kwargs) -> None:
+        super(ExtractOutputFromLSTM, self).__init__(*args, **kwargs)
+
+    def forward(self, x):
+        return x[0]
+
 class ResidualBlock(torch.nn.Module):
+    '''
+    Implementation of a residual block.
+    '''
     def __init__(self, in_channels, out_channels):
-        super().__init__()
+        super(ResidualBlock, self).__init__()
         self.in_channels, self.out_channels = in_channels, out_channels
         self.lin_layer = torch.nn.Linear(in_channels, out_channels)
         self.shortcut = torch.nn.Linear(in_channels, out_channels) if in_channels != out_channels else torch.nn.Identity()
@@ -87,10 +97,15 @@ class StudentModel(Model, torch.nn.Module):
     # this class should be loading your weights and vocabulary
 
     def __init__(self):
-        # first load the embeddings
+        '''
+        Inside this init functions, embeddings are loaded and the classifier is created based
+        on the config file.
+        '''
         super().__init__()
         embeddings_path = None
         vocab_path = None
+
+        # first load the embeddings
         if not config.MODEL_HANDLES_OOV:    
             if config.ALGORITHM == config.USE_SKIPGRAM:
                 embeddings_path = "model/skipgram/embeddings.pt"
@@ -115,12 +130,14 @@ class StudentModel(Model, torch.nn.Module):
                 vocab_path = 'model/fasttext/fasttext-wiki-news-subwords-300-vocab.json'
                 vectors_ngrams_path = 'model/fasttext/fasttext-wiki-news-subwords-300-vectors_ngrams.pt'
                 self.embedding = FastTextWrapper(vectors_path, vocab_path, vectors_ngrams_path, 3, 6, 2000000)
+        
+
+        if config.USE_POS_TAGGING:
+            self.pos_embedding = torch.nn.Embedding(len(classes.pos2int), 300, padding_idx=classes.pos2int["PAD"])
                 
 
         # then create the lstm classifier
-
-        layers = []
-        
+        layers = []        
         if config.MODEL == 0:
 
             layers += [
@@ -173,34 +190,91 @@ class StudentModel(Model, torch.nn.Module):
                 torch.nn.Dropout(p=0.5),
                 torch.nn.Linear(1024, 11)
             ]
-        
-        self.num_layers = len(layers)
-        for i in range(self.num_layers):
-            name = f"layer_{i}"
-            setattr(self, name, layers[i])
+        elif config.MODEL == 4:
+            ## Use this only with fasttext and bigrams
+            # layers += [
+            #     torch.nn.LSTM(input_size=config.embedding_size, hidden_size=2048, num_layers=2, batch_first=True, bidirectional=True),
+            #     ExtractOutputFromLSTM(),
+            #     ResidualBlock(4096, 4096),
+            #     torch.nn.Dropout(p=0.5),
+            # ]
+            layers += [
+                torch.nn.LSTM(input_size=config.embedding_size, hidden_size=1024, num_layers=2, batch_first=True, bidirectional=True),
+                ExtractOutputFromLSTM(),
+                ResidualBlock(1024 * 2, 1024),
+                torch.nn.Dropout(p=0.5),
+            ]
 
+            self.main_layers = torch.nn.Sequential(*layers)
+
+            self.bigrams_layers = torch.nn.Sequential(
+                torch.nn.LSTM(input_size=config.embedding_size, hidden_size=1024, num_layers=2, batch_first=True, bidirectional=True),
+                ExtractOutputFromLSTM(),
+                ResidualBlock(1024 * 2, 1024),
+                torch.nn.Dropout(p=0.5),
+            )
+            # self.bigrams_layers = torch.nn.Sequential(
+            #     torch.nn.LSTM(input_size=config.embedding_size, hidden_size=2048, num_layers=2, batch_first=True, bidirectional=True),
+            #     ExtractOutputFromLSTM(),
+            #     ResidualBlock(4096, 4096),
+            #     torch.nn.Dropout(p=0.5),
+            # )
+
+            self.union_layers = torch.nn.Sequential(
+                torch.nn.Linear(1024*2, 512),
+                torch.nn.ReLU(),
+                torch.nn.Dropout(p=0.5),
+                torch.nn.Linear(512, 11)
+            )
+
+
+        if not config.MODEL == 4:
+            self.num_layers = len(layers)
+            for i in range(self.num_layers):
+                name = f"layer_{i}"
+                setattr(self, name, layers[i])
+
+        
+        # then create the loss function
         self.loss = torch.nn.CrossEntropyLoss(ignore_index=-100)
 
+
+        # finally, if required, load the model's checkpoints
         if config.RESUME != None:
             self.load_state_dict(torch.load(config.RESUME, map_location=torch.device(device)))
             self.eval()
 
 
     def forward(self, input):
-        output = self.embedding(input)        
-            
-        for i in range(self.num_layers):
-            name = f"layer_{i}"
-            layer = getattr(self, name)
-            if isinstance(layer, torch.nn.LSTM):
-                output, (h, c) = layer(output)
-            else:
-                output = layer(output)
+        '''
+        Forward based on the selected model
+        '''
+        if config.MODEL == 4:
+            o1 = self.embedding(input[0])
+            o2 = self.embedding(input[1])
+            if config.USE_POS_TAGGING:
+                pos = input[2]
+                pos = self.pos_embedding(pos)
+                o1 += pos
+            o1 = self.main_layers(o1)
+            o2 = self.bigrams_layers(o2)
+            output = torch.cat((o1, o2), dim=2)
+            output = self.union_layers(output)
+        else:
+            output = self.embedding(input)      
+            for i in range(self.num_layers):
+                name = f"layer_{i}"
+                layer = getattr(self, name)
+                if isinstance(layer, torch.nn.LSTM):
+                    output, (h, c) = layer(output)
+                else:
+                    output = layer(output)
         return output
 
     def predict(self, tokens: List[List[str]]) -> List[List[str]]:
-        # STUDENT: implement here your predict function
-        # remember to respect the same order of tokens!
+        '''
+        Predict the labels for the given tokens
+        '''
         data = []
         for i in range(len(tokens)):
             cur_sentence = tokens[i].copy()
@@ -218,8 +292,6 @@ class StudentModel(Model, torch.nn.Module):
 
         output = torch.argmax(output, dim=2).tolist()
 
-        # output = pack_padded_sequence(torch.tensor(output, device=config.device), lengths=length, batch_first=True, enforce_sorted=False)[0]
-
         for i in range(len(tokens)):
             output[i] = output[i][:len(tokens[i])]
 
@@ -228,14 +300,17 @@ class StudentModel(Model, torch.nn.Module):
                 output[i][j] =  classes.int2class[output[i][j]]
 
         return output
+    
 
     def loss_function(self, output, target):
-        # STUDENT: implement here your loss function
+        '''
+        Returns the loss for the given output and target
+        '''
         return self.loss(output, target)
 
     def get_key(self, key):
         '''
-        Returns the index of the key in the vocabulary
+        Returns the index of the key in the vocabulary.
         '''
         if config.MODEL_HANDLES_OOV:
             return self.embedding.get_index(key)
@@ -246,8 +321,15 @@ class StudentModel(Model, torch.nn.Module):
                 return self.vocab[config.UNK_TOKEN]
     
     def unfreeze_embeddings(self, lr=1e-4):
-        for param in self.embedding.parameters():
-            param.requires_grad = True
+        '''
+        Unfreeze the embeddings layer and set the learning rate to config.EMB_LR
+        '''
+        if config.MODEL_HANDLES_OOV:
+            self.embedding.unfreeze_embeddings()
+        else:
+            for param in self.embedding.parameters():
+                param.requires_grad = True
+        self.optimizer = torch.optim.Adam(self.embedding.parameters(), lr=config.EMB_LR)
 
 
 

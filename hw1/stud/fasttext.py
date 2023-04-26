@@ -9,22 +9,10 @@ import torch
 
 
 def compute_ngrams_bytes(word, minn, maxn):
-    """Compute ngrams for a given word.
+    """
+    Compute ngrams for a given word.
 
-    Parameters
-    ----------
-    word : str
-        The word to compute ngrams for.
-    minn : int
-        Minimum ngram length
-    maxn : int
-        Maximum ngram length
-
-    Returns
-    -------
-    list of bytes
-        The ngrams of the word.
-
+    rewritten from gensim.models.fasttext_inner.compute_ngrams_bytes
     """
     utf8_word = ('<%s>' % word).encode("utf-8")
     bytez = utf8_word
@@ -48,18 +36,10 @@ def compute_ngrams_bytes(word, minn, maxn):
     return ngrams
 
 def ft_hash_bytes_my(bytes):
-    """Hash a byte string.
+    """
+    Hash a byte string.
 
-    Parameters
-    ----------
-    bytes : bytes
-        The bytes to hash.
-
-    Returns
-    -------
-    int
-        The hash of the bytes.
-
+    rewritten from gensim.models.fasttext_inner.ft_hash_bytes
     """
     h = np.uint32(2166136261)
 
@@ -70,23 +50,10 @@ def ft_hash_bytes_my(bytes):
 
 
 def ft_ngram_hashes(word, minn, maxn, num_buckets):
-    """Calculate the ngrams of the word and hash them.
-
-    Parameters
-    ----------
-    word : str
-        The word to calculate ngram hashes for.
-    minn : int
-        Minimum ngram length
-    maxn : int
-        Maximum ngram length
-    num_buckets : int
-        The number of buckets
-
-    Returns
-    -------
-        A list of hashes (integers), one per each detected ngram.
-
+    """
+    Calculate the ngrams of the word and hash them.
+    
+    rewritten from gensim.models.fasttext_inner.ft_ngram_hashes
     """
     encoded_ngrams = compute_ngrams_bytes(word, minn, maxn)
     hashes = [ft_hash_bytes_my(n) % num_buckets for n in encoded_ngrams]
@@ -94,6 +61,13 @@ def ft_ngram_hashes(word, minn, maxn, num_buckets):
 
 
 class FastTextWrapper:
+
+    '''
+    Wrapper for the FastText model.
+
+    Since the docker does not support the gensim library, i implemented the FastText
+    by extracting weights and vocab from the library's model.
+    '''
 
     def __init__(self, vec_path, vocab_path, vectors_ngram_path, min_n, max_n, bucket, count=0, dtype=torch.float32):
         self.vec_path = vec_path
@@ -116,6 +90,9 @@ class FastTextWrapper:
 
 
     def load_vectors(self):
+        '''
+        load the embedding matrix and vocab from file.
+        '''
         self.vectors = torch.load(self.vec_path).to(config.device)
         self.vectors_ngrams = torch.load(self.vectors_ngram_path).to(config.device)
         with open(self.vocab_path, 'r') as f:
@@ -128,7 +105,8 @@ class FastTextWrapper:
         self.vectors_ngrams.requires_grad = False
 
     def get_vector(self, word, norm=False):
-            """Get word representations in vector space, as a 1D numpy array.
+            """
+            Get word representations in vector space, as a 1D numpy array.
             """
             if word in self.key_to_index:
                 return self.vectors[self.key_to_index[word]]
@@ -169,6 +147,9 @@ class FastTextWrapper:
             return self.oov_idx - 1
     
     def __call__(self, *args, **kwds):
+        '''
+        given a batch of sequences, return the embedding matrix of the batch.
+        '''
 
         if len(args) == 1:
             batch = args[0]
@@ -186,6 +167,20 @@ class FastTextWrapper:
                     output[i, j, :] = torch.zeros((config.embedding_size), dtype=torch.float32, device=config.device)
         
         return output
+    
+    def unfreeze_embeddings(self):
+        '''
+        unfreeze the embedding layers.
+        '''
+        self.vectors_vocab.requires_grad = True
+        self.vectors.requires_grad = True
+        self.vectors_ngrams.requires_grad = True
+    
+    def parameters(self):
+        '''
+        return the parameters of the embedding layers.
+        '''
+        return [self.vectors_vocab, self.vectors, self.vectors_ngrams]
 
                     
                 

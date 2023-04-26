@@ -7,19 +7,37 @@ import json
 import re
 import os
 import collections
+import nltk
+nltk.download('averaged_perceptron_tagger')
+if config.USE_BIGRAMS:
+    from gensim.models import Phrases
+    from gensim.models.phrases import Phraser
 
 
 class Dataset:
+    """
+    General dataset class.
+
+    It implements initialization, vocabulary building and data loading.
+    """
 
     def __init__(self, path, vocab_size, unk_token, window_size, ) -> None:
         super().__init__()
         self.window_size = window_size
         # [[w1,s1, w2,s1, ..., w|s1|,s1], [w1,s2, w2,s2, ..., w|s2|,s2], ..., [w1,sn, ..., w|sn|,sn]]
-        self.data_words, self.labels = self.read_data(path)
+        if config.USE_BIGRAMS and not config.USE_POS_TAGGING:
+            self.data_words, self.data_bigrams, self.labels = self.read_data(path)
+        elif config.USE_BIGRAMS and config.USE_POS_TAGGING:
+            self.data_words, self.data_bigrams, self.data_pos, self.labels = self.read_data(path)
+        else:
+            self.data_words, self.labels = self.read_data(path)
         self.build_vocabulary(vocab_size, unk_token)
 
     def read_data(self, path):
-        """Read sentences from train file and put them in a list."""
+        """
+        Read sentences from train file and put them in a list.
+        """
+
         gist_file = open("./data/gist_stopwords.txt", "r")
         stopwords = set()
         try:
@@ -36,15 +54,36 @@ class Dataset:
         
         filt = lambda x: True #  x not in stopwords and not re.match(r"(?=\S*['-])([a-zA-Z'-]+)", x) and not any([not c.isalnum() for c in x])
 
+        pos_tags = []
+
         for json_str in tqdm(json_list):
             result = json.loads(json_str)
             sentences.append([token.lower()  if filt(token.lower()) else config.UNK_TOKEN for token in result['tokens']])
             labels.append(result['labels'])
+            if config.USE_POS_TAGGING:
+                pos_tags.append([token[1] for token in nltk.pos_tag(result['tokens'], tagset='universal')])
+
+        returns = [sentences, labels]
+
+        if config.USE_POS_TAGGING:
+            returns.insert(1, pos_tags)
+            print("POS TAGS: ", pos_tags[0:10])
+        
+        if config.USE_BIGRAMS:
+            bigram = Phrases(sentences, min_count=1, threshold=1)
+            bigram_phraser = Phraser(bigram)
+            bigrams = [bigram_phraser[sentence] for sentence in sentences]
+            # i have to add padding after each bigram. Not every word is a bigram, so the length of the sentence changes
+            for i in range(len(bigrams)):
+                bigrams[i] += [config.PAD_TOKEN] * (len(sentences[i]) - len(bigrams[i]))
             
-        return sentences, labels
+            returns.insert(1, bigrams)
+        
+        return returns
 
     def build_vocabulary(self, vocab_size, unk_token):
-        """Defines the vocabulary to be used. Builds a mapping (word, index) for
+        """
+        Defines the vocabulary to be used. Builds a mapping (word, index) for
         each word in the vocabulary.
 
         Args:

@@ -14,20 +14,15 @@ import classes
 
 torch.manual_seed(42)
 
+'''
+Script that trains a classifier.
+'''
+
+
 def collate_fn(data):
-	'''  
-	We should build a custom collate_fn rather than using default collate_fn,
-	as the size of every sentence is different and merging sequences (including padding) 
-	is not supported in default. 
-	Args:
-		data: list of tuple (training sequence, label)
-	Return:
-	padded_seq - Padded Sequence, tensor of shape (batch_size, padded_length)
-	length - Original length of each sequence(without padding), tensor of shape(batch_size)
-	label - tensor of shape (batch_size)
 	'''
-	#sorting is important for usage pack padded sequence (used in model). It should be in decreasing order.
-	# save original length of each sequence
+	I wrote a custom collate function to handle the padding of the sequences.
+	'''
 	length = [len(x["inputs"]) for x in data]
 	inputs = [torch.tensor(x["inputs"]) for x in data]
 	targets = [torch.tensor(x["targets"]) for x in data]
@@ -38,10 +33,31 @@ def collate_fn(data):
 			inputs.append(torch.tensor([config.vocab_size - 1]))
 			targets.append(torch.tensor([-100]))
 			length.append(1)
+	
 	# pad inputs
 	padded_seq = pad_sequence(inputs, batch_first=True, padding_value=config.vocab_size - 1)
 	padded_targets = pad_sequence(targets, batch_first=True, padding_value=-100)
-	return padded_seq, torch.tensor(length), padded_targets
+
+	returns = [padded_seq, torch.tensor(length), padded_targets]
+
+	# add bigrams to the output if required
+	if config.USE_BIGRAMS:
+		bigrams = [torch.tensor(x["bigrams"]) for x in data]
+		if len(bigrams) < config.batch_size:
+			for i in range(config.batch_size - len(bigrams)):
+				bigrams.append(torch.tensor([config.vocab_size - 1]))
+		padded_bigrams = pad_sequence(bigrams, batch_first=True, padding_value=config.vocab_size - 1)
+		returns.append(padded_bigrams)
+	
+	if config.USE_POS_TAGGING:
+		pos = [torch.tensor(x["pos"]) for x in data]
+		if len(pos) < config.batch_size:
+			for i in range(config.batch_size - len(pos)):
+				pos.append(torch.tensor([classes.pos2int["PAD"]]))
+		padded_pos = pad_sequence(pos, batch_first=True, padding_value=classes.pos2int["PAD"])
+		returns.append(padded_pos)
+
+	return returns
 
 
 
@@ -51,22 +67,31 @@ def collate_fn(data):
 model = StudentModel().to(config.device)
 train_dataset = ClassifierDataset(config.train_file, config.vocab_size, config.UNK_TOKEN, window_size=5, get_key=model.get_key)
 validation_dataset = ClassifierDataset(config.validation_file, config.vocab_size, config.UNK_TOKEN, window_size=5, get_key=model.get_key)
-if config.ALGORITHM == config.USE_GLOVE:
+
+# this part is no longer needed since the dataset now handles the conversion
+# from word to id thaks to the get_key function
+if config.ALGORITHM == config.USE_GLOVE or config.ALGORITHM == config.USE_W2V_GENSIM:
 	validation_dataset.word2id = model.vocab
 	validation_dataset.id2word = {v: k for k, v in model.vocab.items()}
 	train_dataset.word2id = model.vocab
 	train_dataset.id2word = {v: k for k, v in model.vocab.items()}
 	config.vocab_size = len(model.vocab)
+elif config.ALGORITHM == config.USE_FASTTEXT:
+	validation_dataset.word2id = model.embedding.key_to_index
+	validation_dataset.id2word = {v: k for k, v in model.embedding.key_to_index.items()}
+	train_dataset.word2id = model.embedding.key_to_index
+	train_dataset.id2word = {v: k for k, v in model.embedding.key_to_index.items()}
+	config.vocab_size = len(model.embedding.key_to_index)
 else:
 	validation_dataset.word2id = train_dataset.word2id
 	validation_dataset.id2word = train_dataset.id2word
-# define an optimizer to update the parameters
 
+
+# define an optimizer to update the parameters
 optimizer = torch.optim.Adam(model.parameters(), lr=config.learning_rate, weight_decay=config.weight_decay)
 
 
 ## Train the model
-
 if config.TRAIN:
 	trainer = Trainer(model, optimizer)
 	dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=config.batch_size, collate_fn=collate_fn) #it batches data for us

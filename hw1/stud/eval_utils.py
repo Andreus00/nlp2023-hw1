@@ -2,6 +2,12 @@ import torch
 import numpy as np
 import matplotlib.pyplot as plt
 
+'''
+Utils for evaluation
+'''
+
+
+
 def cosine_similarity(embeddings, word):
     '''
     Computes the cosine similarity between two vectors
@@ -13,6 +19,9 @@ def cosine_similarity(embeddings, word):
 
 
 def get_k_closest(word, vocab, embeddings, k=10):
+    '''
+    Get the k closest words to a given word
+    '''
     word_embedding = embeddings[vocab[word]]
     similarities = cosine_similarity(embeddings, embeddings[vocab[word]])
     best = list(torch.argsort(similarities)[-k:].numpy().flatten())
@@ -28,6 +37,9 @@ def get_k_closest(word, vocab, embeddings, k=10):
 
 
 def plot_embeddings(vocab, embeddings):
+    '''
+    Plot the embeddings in 2D with PCA
+    '''
     from sklearn.decomposition import PCA
     pca = PCA(n_components=2)
     x_new = pca.fit_transform(embeddings)
@@ -39,6 +51,9 @@ def plot_embeddings(vocab, embeddings):
 
 
 def plot_embeddings_close_to_word(vocab, embeddings, word, k=10):
+    '''
+    Plot the embeddings close to a given one in 2D with PCA
+    '''
     from sklearn.decomposition import PCA
     inv_vocab = {v: k for k, v in vocab.items()}
     pca = PCA(n_components=2)
@@ -62,9 +77,6 @@ def plot_embeddings_close_to_word(vocab, embeddings, word, k=10):
     print("Worst Scores:", worse_words_and_scores)
     print()
     print("-"*50)
-    
-    
-    # plot best words
     
     best = embeddings[best_idxs]
     x_new = pca.fit_transform(best)

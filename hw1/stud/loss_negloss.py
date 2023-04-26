@@ -3,7 +3,10 @@ import torch
 import config
 
 class NEGLoss(nn.Module):
-    '''Code from https://github.com/dthiagarajan/word2vec-pytorch/'''
+    '''
+    Taken by the notebook.
+
+    Code from https://github.com/dthiagarajan/word2vec-pytorch/'''
     def __init__(self, idx_to_word, word_freqs, num_negative_samples=5):
         super(NEGLoss, self).__init__()
         # number of negative samples for which we will compute the loss

@@ -20,6 +20,11 @@ if config.WANDB:
     )
 
 class Trainer():
+    '''
+    This class trains a model on a given dataset.
+
+    It can be used for both classification and embeddings, based on the configuration.
+    '''
     def __init__(self, model, optimizer):
 
         self.device = config.device
@@ -40,21 +45,35 @@ class Trainer():
             len_train = 0
             cumulative_accuracy, cumulative_precision, cumulative_f1, cumulative_recall = 0.0, 0.0, 0.0, 0.0
             pbar = tqdm(enumerate(train_dataset), total=num_batches, desc="Epoch {}".format(epoch))
-            # each element (sample) in train_dataset is a batch
+
             for step, sample in pbar:
                 if config.TRAIN_CLASSIFIER:
-                    original_lengths = sample[1]
-                    targets = sample[2].to(self.device) # targets in the batch
-                    inputs = sample[0].to(self.device)
-                # inputs in the batch
+                    if config.USE_BIGRAMS and not config.USE_POS_TAGGING:
+                        inputs = sample[0].to(self.device)
+                        original_lengths = sample[1]
+                        targets = sample[2].to(self.device)
+                        bigrams = sample[3].to(self.device)
+                    elif config.USE_BIGRAMS and config.USE_POS_TAGGING:
+                        inputs = sample[0].to(self.device)
+                        original_lengths = sample[1]
+                        targets = sample[2].to(self.device)
+                        bigrams = sample[3].to(self.device)
+                        pos = sample[4].to(self.device)
+                    else:
+                        inputs = sample[0].to(self.device)
+                        original_lengths = sample[1]
+                        targets = sample[2].to(self.device)
                 else:
-                    targets = sample["targets"].to(self.device)  # targets in the batch
-                    inputs = sample["inputs"].to(self.device)  # inputs in the batch
-                # outputs in the batch
+                    targets = sample["targets"].to(self.device)
+                    inputs = sample["inputs"].to(self.device)
 
-                # sets the ones corresponding to the input word
                 if config.TRAIN_CLASSIFIER:
-                    X = inputs
+                    if config.USE_BIGRAMS and not config.USE_POS_TAGGING:
+                        X = (inputs, bigrams)
+                    elif config.USE_BIGRAMS and config.USE_POS_TAGGING:
+                        X = (inputs, bigrams, pos)
+                    else:
+                        X = inputs
                 else:
                     X = torch.zeros((inputs.shape[0], config.vocab_size), device=self.device)
                     for word in range(inputs.shape[0]):
@@ -66,10 +85,8 @@ class Trainer():
                     output_distribution = torch.nn.utils.rnn.pack_padded_sequence(output_distribution, original_lengths, batch_first=True, enforce_sorted=False)[0]
                     targets = torch.nn.utils.rnn.pack_padded_sequence(targets, original_lengths, batch_first=True, enforce_sorted=False)[0]
                     
-                loss = self.model.loss_function(output_distribution, targets)  # compute loss
-                # calculates the gradient and accumulates
-                loss.backward()  # we backpropagate the loss
-                # updates the parameters
+                loss = self.model.loss_function(output_distribution, targets)
+                loss.backward()
                 self.optimizer.step()
                 self.optimizer.zero_grad()
 
@@ -113,18 +130,37 @@ class Trainer():
                     cumulative_accuracy, cumulative_precision, cumulative_f1, cumulative_recall = 0.0, 0.0, 0.0, 0.0
                     for sample in validation_dataset:
                         if config.TRAIN_CLASSIFIER:
-                            original_lengths = sample[1]
-                            targets = sample[2].to(self.device)
+                            if config.USE_BIGRAMS and not config.USE_POS_TAGGING:
+                                inputs = sample[0].to(self.device)
+                                original_lengths = sample[1]
+                                targets = sample[2].to(self.device)
+                                bigrams = sample[3].to(self.device)
+                            elif config.USE_BIGRAMS and config.USE_POS_TAGGING:
+                                inputs = sample[0].to(self.device)
+                                original_lengths = sample[1]
+                                targets = sample[2].to(self.device)
+                                bigrams = sample[3].to(self.device)
+                                pos = sample[4].to(self.device)
+                            else:
+                                inputs = sample[0].to(self.device)
+                                original_lengths = sample[1]
+                                targets = sample[2].to(self.device)
                         else:
                             targets = sample[1].to(self.device)
                         inputs = sample[0].to(self.device)
 
                         if config.TRAIN_CLASSIFIER:
-                            X = inputs
+                            if config.USE_BIGRAMS and not config.USE_POS_TAGGING:
+                                X = (inputs, bigrams)
+                            elif config.USE_BIGRAMS and config.USE_POS_TAGGING:
+                                X = (inputs, bigrams, pos)
+                            else:
+                                X = inputs
                         else:
                             X = torch.zeros((inputs.shape[0], config.vocab_size), device=self.device)
                             for word in range(inputs.shape[0]):
                                 X[word, inputs[word]] = 1
+
                         output_distribution = self.model(X)
 
                         if config.TRAIN_CLASSIFIER:
@@ -158,9 +194,8 @@ class Trainer():
                     avg_val_f1 = cumulative_f1 / len_val
                     avg_val_recall = cumulative_recall / len_val
                     print('ValidationEpoch: {} avg loss = {:0.10f},  avg f1 {:0.4f} avg accuracy {:0.4f} avg precision {:0.4f}  avg recall {:0.4f}'.format(epoch, avg_val_loss, avg_val_f1, avg_val_accuracy, avg_val_precision, avg_val_recall))
-                    # with open(os.path.join(output_folder, 'validation_metrics.txt'), 'a') as f:
-                    #     f.write('Validaton Epoch: {} avg loss = {:0.10f},  avg f1 {:0.4f} avg accuracy {:0.4f} avg precision {:0.4f}  avg recall {:0.4f}\n'.format(epoch, avg_val_loss, avg_val_f1, avg_val_accuracy, avg_val_precision, avg_val_recall))
-                    
+
+
                 if config.WANDB:
                     wandb.log({"val-acc": avg_val_accuracy, "val-loss": avg_val_loss, "val-f1": avg_val_f1, "val-precision": avg_val_precision, "val-recall": avg_val_recall, 'train_loss': avg_epoch_loss, 'train_f1': avg_epoch_f1, 'train_accuracy': avg_epoch_accuracy, 'train_precision': avg_epoch_precision, 'train_recall': avg_epoch_recall})
 
@@ -168,13 +203,13 @@ class Trainer():
                 if best_val_loss > avg_val_loss:
                     best_val_loss = avg_val_loss
                     torch.save(self.model.state_dict(),
-                        os.path.join(output_folder, 'best_state.pt'))  # save the model state
+                        os.path.join(output_folder, 'best_state.pt'))
                     print('------- Model saved at epoch {}  -------'.format(epoch))
             else:
                 torch.save(self.model.state_dict(),
-                        os.path.join(output_folder, 'state_{}.pt'.format(epoch)))  # save the model state
+                        os.path.join(output_folder, 'state_{}.pt'.format(epoch)))
             
-            if config.UNFREEZE_EMB and avg_val_f1 > 0.65 and avg_epoch_f1 > 0.65:
+            if config.UNFREEZE_EMB and epoch == config.UNFREEZE_EMB_EPOCH:
                 self.model.unfreeze_embeddings()
                 print("Unfreeze embeddings")
                 

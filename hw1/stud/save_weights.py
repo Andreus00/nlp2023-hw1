@@ -27,6 +27,11 @@ import io
 from typing import Dict, List
 
 
+'''
+This file was used to save the weights of the models.
+'''
+
+
 # def LoadFastText():
 #     input_file = io.open('model/fasttext/wiki-news-300d-1M-subword.vec', 'r', encoding='utf-8', newline='\n', errors='ignore')
 #     no_of_words, vector_size = map(int, input_file.readline().split())

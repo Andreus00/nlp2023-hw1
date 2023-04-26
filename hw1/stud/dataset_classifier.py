@@ -5,6 +5,9 @@ import config
 import classes
 
 class ClassifierDataset(torch.utils.data.IterableDataset, Dataset):
+    '''
+    Dataset for the classifier task.
+    '''
 
     def __init__(self, path, vocab_size, unk_token, window_size, get_key) -> None:
         super().__init__(path, vocab_size, unk_token, window_size)
@@ -14,21 +17,53 @@ class ClassifierDataset(torch.utils.data.IterableDataset, Dataset):
         
     
     def __iter__(self):
+        '''
+        Returns an iterator over the dataset.
+        '''
         sentences = self.data_words
+        if config.USE_BIGRAMS:
+            bigrams = self.data_bigrams
+        else:
+            bigrams = []
+        if config.USE_POS_TAGGING:
+            self.data_pos = self.data_pos
+        else:
+            self.data_pos = []
         labels = self.labels
         i = 0
         while i < len(sentences):
             cur_sentence = sentences[i].copy()
+            if config.USE_BIGRAMS:
+                cur_bigrams = bigrams[i].copy()
+            if config.USE_POS_TAGGING:
+                cur_pos = self.data_pos[i].copy()
             cur_labels = labels[i].copy()
             for k in range(len(cur_sentence)):
                 cur_sentence[k] = self.get_key(cur_sentence[k])
                 cur_labels[k] = classes.class2int[cur_labels[k]]
-            yield {"inputs": cur_sentence, "targets": cur_labels}
+            if config.USE_BIGRAMS:
+                for k in range(len(cur_bigrams)):
+                    cur_bigrams[k] = self.get_key(cur_bigrams[k])
+                                        
+            if config.USE_POS_TAGGING:
+                for k in range(len(self.data_pos[i])):
+                    cur_pos[k] = classes.pos2int[cur_pos[k]]
+
+            if config.USE_BIGRAMS and not config.USE_POS_TAGGING:
+                yield {"inputs": cur_sentence, "bigrams": cur_bigrams, "targets": cur_labels}
+            elif config.USE_BIGRAMS and config.USE_POS_TAGGING:
+                yield {"inputs": cur_sentence, "bigrams": cur_bigrams, "pos": cur_pos, "targets": cur_labels}
+            else:
+                yield {"inputs": cur_sentence, "targets": cur_labels}
             
             i += 1
     
 
     def get_stats(self):
+        '''
+        Get some statistics from the dataset.
+        '''
+
         # count words
         import matplotlib.pyplot as plt
         import matplotlib

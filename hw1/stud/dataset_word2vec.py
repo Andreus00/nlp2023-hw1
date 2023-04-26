@@ -13,6 +13,11 @@ from tqdm.auto import tqdm
 torch.manual_seed(42)
 
 class Word2VecDataset(torch.utils.data.IterableDataset, Dataset):
+    """
+    Dataset for the word2vec task.
+
+    Used for both skipgram and CBOW training.
+    """
 
     def __init__(self, path, vocab_size, unk_token, window_size):
         """
@@ -26,7 +31,8 @@ class Word2VecDataset(torch.utils.data.IterableDataset, Dataset):
     
 
     def read_data(self, path):
-        """Read sentences from train file and put them in a list.
+        """
+        Read sentences from train file and put them in a list.
         Remove stopwords and punctuation instead of just putting the UNK token.
         """
         gist_file = open("./data/gist_stopwords.txt", "r")
@@ -52,6 +58,9 @@ class Word2VecDataset(torch.utils.data.IterableDataset, Dataset):
         return sentences, None
 
     def __iter__(self):
+        """
+        Iterate over the dataset.
+        """
         sentences = self.data_words
         pbar = tqdm(sentences, total=len(sentences))
         for sentence in pbar:
@@ -82,7 +91,11 @@ class Word2VecDataset(torch.utils.data.IterableDataset, Dataset):
                             yield output_dict
 
     def keep_word(self, word):
-        '''Implements negative sampling and returns true if we can keep the occurrence as training instance.'''
+        '''
+        Implements negative sampling and returns true if we can keep the occurrence as training instance.
+
+        Taken from the notebook.
+        '''
         z = self.frequency[word] / self.tot_occurrences
         p_keep = np.sqrt(z / 10e-3) + 1
         p_keep *= 10e-3 / z # higher for less frequent instances
