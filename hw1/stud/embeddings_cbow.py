@@ -42,5 +42,5 @@ class CBOW(torch.nn.Module, Embedding):
         '''
         Get the embeddings of the model
         '''
-        return self.embeddings.weight.detach().cpu()
+        return self.lin_layer.weight.T.detach().cpu()
 

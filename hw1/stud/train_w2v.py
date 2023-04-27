@@ -41,14 +41,13 @@ if config.TRAIN:
     trainer = Trainer(model, optimizer)
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=config.batch_size) #it batches data for us
     avg_loss = trainer.train(dataloader, config.OUTPUT_W2V_PATH, epochs=config.num_epochs)
-
-
+    
 
 ## Plot the embeddings
 
 if config.EVALUATE:
-    
-    for epoch in [0, config.num_epochs // 2, config.num_epochs - 1]:
+
+    for epoch in [49]: #[0, config.num_epochs // 2, config.num_epochs - 1]:
         ## load model from checkpoint
         model.load_state_dict(torch.load(os.path.join(config.OUTPUT_W2V_PATH, 'state_{}.pt'.format(epoch))))
 
@@ -76,5 +75,6 @@ if config.EVALUATE:
         plt.show()
 
         # plot the closest words to the selected words
-        plot_embeddings_close_to_word(dataset.word2id, embeddings, embeddings[dataset.word2id['february']])
+        print(dataset.word2id['march'])
+        plot_embeddings_close_to_word(dataset.word2id, embeddings, embeddings[dataset.word2id['march']])
 

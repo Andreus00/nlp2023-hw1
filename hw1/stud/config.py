@@ -26,15 +26,15 @@ UNK_TOKEN = "UNK"
 PAD_TOKEN = "PAD"
 
 # classifier selection and configuration
-ALGORITHM = USE_FASTTEXT
-MODEL_HANDLES_OOV = True
+ALGORITHM = USE_CBOW
+MODEL_HANDLES_OOV = False
 MODEL = 4
 NORM_IN_RESBLOCK = True
 UNFREEZE_EMB = False
 UNFREEZE_EMB_EPOCH = 2
 EMB_LR = 1e-5
-USE_BIGRAMS = True
-USE_POS_TAGGING = True
+USE_BIGRAMS = False
+USE_POS_TAGGING = False
 
 RESUME = None # "model/classifier/best_state.pt" # "model/classifier/double-bilstm-resblock-fasttext-no-bn.pt" #  "model/classifier/double-bilstm-resblock-glove-no-bn.pt"
 
@@ -49,22 +49,22 @@ GENERATE_VOCAB = False
 OUTPUT_CLASSIFIER = "./model/classifier/"
 
 # hyperparameters
-batch_size = 128
+batch_size = 2048
 learning_rate = 1e-4
 weight_decay = 1e-4
 lr_decay=0.9
-num_epochs = 30
+num_epochs = 50
 
 
 # switch between training the classifier and the embedding models
-TRAIN_CLASSIFIER = True
+TRAIN_CLASSIFIER = False
 
 # deprecated
-TRAIN = True
+TRAIN = False
 EVALUATE = True
 
 # wandb
-WANDB = True
+WANDB = False
 
 # device selection
 import torch

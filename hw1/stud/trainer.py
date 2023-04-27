@@ -76,8 +76,8 @@ class Trainer():
                         X = inputs
                 else:
                     X = torch.zeros((inputs.shape[0], config.vocab_size), device=self.device)
-                    for word in range(inputs.shape[0]):
-                        X[word, inputs[word]] = 1
+                    for idx in range(inputs.shape[0]):
+                        X[idx, inputs[idx]] = 1
                 
                 output_distribution = self.model(X)
 
@@ -121,6 +121,10 @@ class Trainer():
             #             f.write('Validaton Epoch: {} avg loss = {:0.10f},  avg f1 {:0.4f} avg accuracy {:0.4f} avg precision {:0.4f}  avg recall {:0.4f}\n'.format(epoch, avg_epoch_loss, avg_epoch_f1, avg_epoch_accuracy, avg_epoch_precision, avg_epoch_recall))
 
             train_loss += avg_epoch_loss
+
+            if not config.TRAIN_CLASSIFIER and config.WANDB:
+                    wandb.log({ 'train_loss': avg_epoch_loss, 'train_f1': avg_epoch_f1, 'train_accuracy': avg_epoch_accuracy, 'train_precision': avg_epoch_precision, 'train_recall': avg_epoch_recall})
+
 
             if validation_dataset is not None:
                 print("Validation")
